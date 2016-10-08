@@ -1,0 +1,1072 @@
+{
+    "default_icon": "thermostat_device_default.png",
+    "ToggleButton": 1,
+    "inScene": "1",
+    "DisplayStatus": {
+        "Style": "numeric",
+        "Service": "urn:upnp-org:serviceId:TemperatureSensor1",
+        "Variable": "CurrentTemperature",
+        "MinValue": "-20",
+        "MaxValue": "100",
+        "ExtraDisplay": {
+            "HeatSetPoint": {
+                "Style": "numeric",
+                "Service": "urn:upnp-org:serviceId:TemperatureSetpoint1_Heat",
+                "Variable": "CurrentSetpoint"
+            },
+            "CoolSetPoint": {
+                "Style": "numeric",
+                "Service": "urn:upnp-org:serviceId:TemperatureSetpoint1_Cool",
+                "Variable": "CurrentSetpoint"
+            },
+            "ThermostatMode": {
+                "Style": "numeric",
+                "Service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
+                "Variable": "ModeStatus"
+            },
+            "FanMode": {
+                "Style": "numeric",
+                "Service": "urn:upnp-org:serviceId:HVAC_FanOperatingMode1",
+                "Variable": "ModeStatus"
+            }
+        }
+    },
+    "Tabs": [
+        {
+            "Label": {
+                "lang_tag": "tabname_control",
+                "text": "Control"
+            },
+            "Position": "0",
+            "TopNavigationTab": 1,
+            "TabType": "flash",
+            "ControlGroup": [
+                {
+                    "id": "1",
+                    "scenegroup": "1"
+                },
+               {
+                    "id": "2",
+                    "scenegroup": "2"
+                },
+                {
+                    "id": "5",
+                    "scenegroup": "5"
+                }
+            ],
+            "SceneGroup": [
+                {
+                    "id": "1",
+                    "top": "0.5",
+                    "left": "0",
+                    "x": "1",
+                    "y": "3"
+                },
+               {
+                    "id": "2",
+                    "top": "0",
+                    "left": "2",
+                    "x": "1",
+                    "y": "3"
+                },
+                {
+                    "id": "5",
+                    "top": "0.5",
+                    "left": "1",
+                    "x": "1",
+                    "y": "3"
+                }
+            ],
+            "Control": [
+                {
+                    "ControlGroup": "1",
+                    "ControlType": "button",
+                    "top": "0",
+                    "left": "0",
+                    "Label": {
+                        "lang_tag": "cmd_off",
+                        "text": "Off"
+                    },
+                    "Display": {
+                        "Top": 40,
+                        "Left": 50,
+                        "Width": 75,
+                        "Height": 20,
+                        "Service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
+                        "Variable": "ModeStatus",
+                        "Value": "Off"
+                    },
+                    "Command": {
+                        "Service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
+                        "Action": "SetModeTarget",
+                        "Parameters": [
+                            {
+                                "Name": "NewModeTarget",
+                                "Value": "Off"
+                            }
+                        ]
+                    },
+                    "ControlCode": "heater_off"
+                },
+                {
+                    "ControlGroup": "1",
+                    "ControlType": "button",
+                    "top": "1",
+                    "left": "0",
+                    "Label": {
+                        "lang_tag": "cmd_heat",
+                        "text": "Heat"
+                    },
+                    "Display": {
+                        "Top": 40,
+                        "Left": 150,
+                        "Width": 75,
+                        "Height": 20,
+                        "Service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
+                        "Variable": "ModeStatus",
+                        "Value": "HeatOn"
+                    },
+                    "Command": {
+                        "Service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
+                        "Action": "SetModeTarget",
+                        "Parameters": [
+                            {
+                                "Name": "NewModeTarget",
+                                "Value": "HeatOn"
+                            }
+                        ]
+                    },
+                    "ControlCode": "heater_heat"
+                },
+                {
+                    "ControlGroup": "2",
+                    "ControlType": "slider_vertical",
+                    "top": "0",
+                    "left": "1",
+                    "ControlPair": "1",
+                    "ID": "NewCurrentSetpointHeat",
+                    "Style": "numeric",
+                    "Display": {
+                        "Service": "urn:upnp-org:serviceId:TemperatureSetpoint1_Heat",
+                        "Variable": "CurrentSetpoint",
+                        "Top": 10,
+                        "Left": 250,
+                        "Width": 100,
+                        "Height": 20
+                    },
+                    "Command": {
+                        "Service": "urn:upnp-org:serviceId:TemperatureSetpoint1_Heat",
+                        "Action": "SetCurrentSetpoint",
+                        "Parameters": [
+                            {
+                                "Name": "NewCurrentSetpoint",
+                                "ID": "NewCurrentSetpointHeat"
+                            }
+                        ]
+                    },
+                    "ControlCode": "heater_setpoint"
+                },
+                {
+                    "ControlType": "label",
+                    "top": "0",
+                    "left": "0",
+                    "Label": {
+                        "lang_tag": "energy_mode",
+                        "text": "Operate in Eco or Normal mode"
+                    },
+                    "Display": {
+                        "Top": 15,
+                        "Left": 350,
+                        "Width": 100,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlGroup": "5",
+                    "ControlType": "button",
+                    "top": "0",
+                    "left": "0",
+                    "Label": {
+                        "lang_tag": "cmd_energy",
+                        "text": "Eco"
+                    },
+                    "Display": {
+                        "Top": 40,
+                        "Left": 350,
+                        "Width": 75,
+                        "Height": 20,
+                        "Service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
+                        "Variable": "EnergyModeStatus",
+                        "Value": "EnergySavingsMode"
+                    },
+                    "Command": {
+                        "Service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
+                        "Action": "SetEnergyModeTarget",
+                        "Parameters": [
+                            {
+                                "Name": "NewModeTarget",
+                                "Value": "EnergySavingsMode"
+                            }
+                        ]
+                    },
+                    "ControlCode": "energy_energy"
+                },
+                {
+                    "ControlGroup": "5",
+                    "ControlType": "button",
+                    "top": "1",
+                    "left": "0",
+                    "Label": {
+                        "lang_tag": "cmd_normal",
+                        "text": "Normal"
+                    },
+                    "Display": {
+                        "Top": 40,
+                        "Left": 450,
+                        "Width": 75,
+                        "Height": 20,
+                        "Service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
+                        "Variable": "EnergyModeStatus",
+                        "Value": "Normal"
+                    },
+                    "Command": {
+                        "Service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
+                        "Action": "SetEnergyModeTarget",
+                        "Parameters": [
+                            {
+                                "Name": "NewModeTarget",
+                                "Value": "Normal"
+                            }
+                        ]
+                    },
+                    "ControlCode": "energy_normal"
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
+                        "Variable": "PluginEcoMeasureState",
+                        "Top": 75,
+                        "Left": 350,
+                        "Width": 200,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "version",
+                        "text": "Plugin version:"
+                    },
+                    "Display": {
+                        "Top": 110,
+                        "Left": 50,
+                        "Width": 75,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
+                        "Variable": "PluginVersion",
+                        "Top": 110,
+                        "Left": 200,
+                        "Width": 175,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "firmware",
+                        "text": "Gateway firmware version:"
+                    },
+                    "Display": {
+                        "Top": 150,
+                        "Left": 50,
+                        "Width": 75,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
+                        "Variable": "FirmwareVersion",
+                        "Top": 150,
+                        "Left": 200,
+                        "Width": 175,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "date",
+                        "text": "Domestic hot water:"
+                    },
+                    "Display": {
+                        "Top": 190,
+                        "Left": 50,
+                        "Width": 75,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "button",
+                    "Label": {
+                        "lang_tag": "cmd_auto",
+                        "text": "Automatic"
+                    },
+                    "Display": {
+                        "Top": 185,
+                        "Left": 200,
+                        "Width": 75,
+                        "Height": 20,
+                        "Service": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
+                        "Variable": "DHWSetting",
+                        "Value": "A"
+                    },
+                    "Command": {
+                        "Service": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
+                        "Action": "SetDomesticHotWater",
+                        "Parameters": [
+                            {
+                                "Name": "NewMode",
+                                "Value": "Automatic"
+                            }
+                        ]
+                    },
+                    "ControlCode": "heater_clock"
+                },
+                {
+                    "ControlType": "button",
+                    "Label": {
+                        "lang_tag": "cmd_enable",
+                        "text": "Enable"
+                    },
+                    "Display": {
+                        "Top": 185,
+                        "Left": 300,
+                        "Width": 75,
+                        "Height": 20,
+                        "Service": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
+                        "Variable": "DHWSetting",
+                        "Value": "1"
+                    },
+                    "Command": {
+                        "Service": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
+                        "Action": "SetDomesticHotWater",
+                        "Parameters": [
+                            {
+                                "Name": "NewMode",
+                                "Value": "Enable"
+                            }
+                        ]
+                    },
+                    "ControlCode": "heater_clock"
+                },
+                {
+                    "ControlType": "button",
+                    "Label": {
+                        "lang_tag": "cmd_disable",
+                        "text": "Disable"
+                    },
+                    "Display": {
+                        "Top": 185,
+                        "Left": 400,
+                        "Width": 75,
+                        "Height": 20,
+                        "Service": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
+                        "Variable": "DHWSetting",
+                        "Value": "0"
+                    },
+                    "Command": {
+                        "Service": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
+                        "Action": "SetDomesticHotWater",
+                        "Parameters": [
+                            {
+                                "Name": "NewMode",
+                                "Value": "Disable"
+                            }
+                        ]
+                    },
+                    "ControlCode": "heater_clock"
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "date",
+                        "text": "Send date and time:"
+                    },
+                    "Display": {
+                        "Top": 230,
+                        "Left": 50,
+                        "Width": 75,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "button",
+                    "Label": {
+                        "lang_tag": "cmd_clock",
+                        "text": "Set Clock"
+                    },
+                    "Display": {
+                        "Top": 225,
+                        "Left": 200,
+                        "Width": 75,
+                        "Height": 20,
+                        "Service": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1"
+                    },
+                    "Command": {
+                        "Service": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
+                        "Action": "SetClock",
+                        "Parameters": [
+                        ]
+                    },
+                    "ControlCode": "heater_clock"
+                },
+                {
+                    "ControlType": "label",
+                    "Label": {
+                        "lang_tag": "cmd",
+                        "text": "Free format command:"
+                    },
+                    "Display": {
+                        "Top": 270,
+                        "Left": 50,
+                        "Width": 75,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType":"input",
+                    "ID": "CustomCommand",
+                    "Style":"text",
+                    "Display":{
+                        "Top": 265,
+                        "Left": 200,
+                        "Width": 75,
+                        "Height": 20
+                    }
+                },
+                {
+                    "ControlType": "button",
+                    "Label": {
+                        "lang_tag": "cmd_send",
+                        "text": "Send"
+                    },
+                    "Display": {
+                        "Top": 265,
+                        "Left": 300,
+                        "Width": 75,
+                        "Height": 20,
+                        "Service": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1"
+                    },
+                    "Command": {
+                        "Service": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
+                        "Action": "SendCommand",
+                        "Parameters": [
+                            {
+                                "Name": "Command",
+                                "ID": "CustomCommand"
+                            }
+                        ]
+                    },
+                    "ControlCode": "heater_cmd"
+                },
+                {
+                    "ControlType": "variable",
+                    "Display": {
+                        "Service": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
+                        "Variable": "CommandResponse",
+                        "Top": 270,
+                        "Left": 400,
+                        "Width": 175,
+                        "Height": 20
+                    }
+                }
+            ]
+        },
+        {
+            "Label": {
+                "lang_tag": "monitor",
+                "text": "Monitor" 
+            },
+            "Position": "1",
+			"TopNavigationTab": 1,
+            "TabType": "javascript",
+            "ScriptName": "J_OpenThermGateway_UI7.js",
+            "Function": "OpenThermGateway.Monitor" 
+        },
+        {
+            "Label": {
+                "lang_tag": "eco",
+                "text": "Eco"
+            },
+            "Position": "2",
+			"TopNavigationTab": 1,
+            "TabType": "javascript",
+            "ScriptName": "J_OpenThermGateway_UI7.js",
+            "Function": "OpenThermGateway.Eco"
+        },
+        {
+            "Label": {
+                "lang_tag": "config",
+                "text": "Hardware"
+            },
+            "Position": "3",
+			"TopNavigationTab": 1,
+            "TabType": "javascript",
+            "ScriptName": "J_OpenThermGateway_UI7.js",
+            "Function": "OpenThermGateway.Hardware"
+        },
+        {
+            "Label": {
+                "lang_tag": "settings",
+                "text": "Settings"
+            },
+            "Position": "4",
+			"TopNavigationTab": 1,
+            "TabType": "javascript",
+            "ScriptName": "J_OpenThermGateway_UI7.js",
+            "Function": "OpenThermGateway.Settings"
+        },
+        {
+            "Label": {
+                "lang_tag": "advanced",
+                "text": "Advanced"
+            },
+            "Position": "5",
+            "TabType": "javascript",
+            "ScriptName": "shared.js",
+            "Function": "advanced_device"
+        },
+        {
+            "Label": {
+                "lang_tag": "logs",
+                "text": "Logs"
+            },
+            "Position": "6",
+            "TabType": "javascript",
+            "ScriptName": "shared.js",
+            "Function": "device_logs"
+        },
+        {
+            "Label": {
+                "lang_tag": "notifications",
+                "text": "Notifications"
+            },
+            "Position": "7",
+            "TabType": "javascript",
+            "ScriptName": "shared.js",
+            "Function": "device_notifications"
+        }
+    ],
+    "sceneList": {
+        "group_1": {
+            "cmd_1": {
+                "label": "Set Heat Setpoint",
+                "serviceId": "urn:upnp-org:serviceId:TemperatureSetpoint1_Heat",
+                "action": "SetCurrentSetpoint",
+                "argumentList": {
+                    "argument_1": {
+                        "dataType": "ui1",
+                        "defaultValue": "",
+                        "allowedValueRange": {
+                            "minimum": "0",
+                            "maximum": "100"
+                        },
+                        "prefix": "to",
+                        "suffix": "&deg;",
+                        "name": "NewCurrentSetpoint"
+                    }
+                }
+            }
+        }
+    },
+    "eventList2": [
+        {
+            "id": 1,
+            "label": {
+                "lang_tag": "ch_on_off",
+                "text": "Central heating goes on or off"
+            },
+            "serviceId": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
+            "argumentList" : [
+                {
+                  "id": 1,
+                  "dataType": "boolean",
+                  "defaultValue": "1",
+                  "allowedValueList": [
+                    {
+                        "value": "0",
+                        "HumanFriendlyText": {
+                            "lang_tag": "hft_ch_off",
+                            "text": "_DEVICE_NAME_ central heating goes off"
+                        }
+                    },
+                    {
+                        "value": "1",
+                        "HumanFriendlyText": {
+                            "lang_tag": "hft_ch_on",
+                            "text": "_DEVICE_NAME_ central heating goes on"
+                        }
+                    }
+                  ],
+                  "name": "StatusCHMode",
+                  "comparisson": "=",
+                  "prefix": {
+                    "lang_tag": "select_event",
+                    "text": "Select event"
+                  },
+                  "suffix": {}
+               }
+            ]
+        },
+        {
+            "id": 2,
+            "label": {
+                "lang_tag": "dhw_on_off",
+                "text": "Domestic hot water goes on or off"
+            },
+            "serviceId": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
+            "argumentList" : [
+                {
+                  "id": 1,
+                  "dataType": "boolean",
+                  "defaultValue": "1",
+                  "allowedValueList": [
+                    {
+                        "value": "0",
+                        "HumanFriendlyText": {
+                            "lang_tag": "hft_dhw_off",
+                            "text": "_DEVICE_NAME_ domestic hot water goes off"
+                        }
+                    },
+                    {
+                        "value": "1",
+                        "HumanFriendlyText": {
+                            "lang_tag": "hft_dhw_on",
+                            "text": "_DEVICE_NAME_ domestic hot water goes on"
+                        }
+                    }
+                  ],
+                  "name": "StatusDHWMode",
+                  "comparisson": "=",
+                  "prefix": {
+                    "lang_tag": "select_event",
+                    "text": "Select event"
+                  },
+                  "suffix": {}
+               }
+            ]
+        },
+        {
+            "id": 3,
+            "label": {
+                "lang_tag": "cool_on_off",
+                "text": "Cooling goes on or off"
+            },
+            "serviceId": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
+            "argumentList" : [
+                {
+                  "id": 1,
+                  "dataType": "boolean",
+                  "defaultValue": "1",
+                  "allowedValueList": [
+                    {
+                        "value": "0",
+                        "HumanFriendlyText": {
+                            "lang_tag": "hft_cool_off",
+                            "text": "_DEVICE_NAME_ cooling goes off"
+                        }
+                    },
+                    {
+                        "value": "1",
+                        "HumanFriendlyText": {
+                            "lang_tag": "hft_cool_on",
+                            "text": "_DEVICE_NAME_ cooling goes on"
+                        }
+                    }
+                  ],
+                  "name": "StatusCooling",
+                  "comparisson": "=",
+                  "prefix": {
+                    "lang_tag": "select_event",
+                    "text": "Select event"
+                  },
+                  "suffix": {}
+               }
+            ]
+        },
+        {
+            "id": 4,
+            "label": {
+                "lang_tag": "ch2_on_off",
+                "text": "Central heating 2nd circuit goes on or off"
+            },
+            "serviceId": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
+            "argumentList" : [
+                {
+                  "id": 1,
+                  "dataType": "boolean",
+                  "defaultValue": "1",
+                  "allowedValueList": [
+                    {
+                        "value": "0",
+                        "HumanFriendlyText": {
+                            "lang_tag": "hft_ch2_off",
+                            "text": "_DEVICE_NAME_ central heating 2nd circuit goes off"
+                        }
+                    },
+                    {
+                        "value": "1",
+                        "HumanFriendlyText": {
+                            "lang_tag": "hft_ch2_on",
+                            "text": "_DEVICE_NAME_ central heating 2nd circuit goes on"
+                        }
+                    }
+                  ],
+                  "name": "StatusCH2Mode",
+                  "comparisson": "=",
+                  "prefix": {
+                    "lang_tag": "select_event",
+                    "text": "Select event"
+                  },
+                  "suffix": {}
+               }
+            ]
+        },
+        {
+            "id": 5,
+            "label": {
+                "lang_tag": "flame_on_off",
+                "text": "Flame goes on or off"
+            },
+            "serviceId": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
+            "argumentList" : [
+                {
+                  "id": 1,
+                  "dataType": "boolean",
+                  "defaultValue": "1",
+                  "allowedValueList": [
+                    {
+                        "value": "0",
+                        "HumanFriendlyText": {
+                            "lang_tag": "hft_flame_off",
+                            "text": "_DEVICE_NAME_ flame goes off"
+                        }
+                    },
+                    {
+                        "value": "1",
+                        "HumanFriendlyText": {
+                            "lang_tag": "hft_flame_on",
+                            "text": "_DEVICE_NAME_ flame goes on"
+                        }
+                    }
+                  ],
+                  "name": "StatusFlame",
+                  "comparisson": "=",
+                  "prefix": {
+                    "lang_tag": "select_event",
+                    "text": "Select event"
+                  },
+                  "suffix": {}
+               }
+            ]
+        },
+        {
+            "id": 6,
+            "label": {
+                "lang_tag": "fault_indication",
+                "text": "Fault indication"
+            },
+            "serviceId": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
+            "argumentList" : [
+                {
+                  "id": 1,
+                  "dataType": "boolean",
+                  "defaultValue": "1",
+                  "allowedValueList": [
+                    {
+                        "value": "0",
+                        "HumanFriendlyText": {
+                            "lang_tag": "hft_fault_inactive",
+                            "text": "_DEVICE_NAME_ fault indication inactive"
+                        }
+                    },
+                    {
+                        "value": "1",
+                        "HumanFriendlyText": {
+                            "lang_tag": "hft_fault_active",
+                            "text": "_DEVICE_NAME_ fault indication active"
+                        }
+                    }
+                  ],
+                  "name": "StatusFault",
+                  "comparisson": "=",
+                  "prefix": {
+                    "lang_tag": "select_event",
+                    "text": "Select event"
+                  },
+                  "suffix": {}
+               }
+            ]
+        },
+        {
+            "id": 7,
+            "label": {
+                "lang_tag": "diagnostic_indication",
+                "text": "Diagnostic indication"
+            },
+            "serviceId": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
+            "argumentList" : [
+                {
+                  "id": 1,
+                  "dataType": "boolean",
+                  "defaultValue": "1",
+                  "allowedValueList": [
+                    {
+                        "value": "0",
+                        "HumanFriendlyText": {
+                            "lang_tag": "hft_diagnostic_inactive",
+                            "text": "_DEVICE_NAME_ diagnostic indication inactive"
+                        }
+                    },
+                    {
+                        "value": "1",
+                        "HumanFriendlyText": {
+                            "lang_tag": "hft_diagnostic_active",
+                            "text": "_DEVICE_NAME_ diagnostic indication active"
+                        }
+                    }
+                  ],
+                  "name": "StatusDiagnostic",
+                  "comparisson": "=",
+                  "prefix": {
+                    "lang_tag": "select_event",
+                    "text": "Select event"
+                  },
+                  "suffix": {}
+               }
+            ]
+        },
+        {
+            "id": 8,
+            "label": {
+                "lang_tag": "ambient_temperature_goes_above",
+                "text": "Ambient temperature goes above"
+            },
+            "serviceId": "urn:upnp-org:serviceId:TemperatureSensor1",
+            "norepeat": "1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "CurrentTemperature",
+                    "comparisson": ">",
+                    "prefix": {
+                        "lang_tag": "temperature",
+                        "text": "Temperature"
+                    },
+                    "suffix": {
+                        "lang_tag": "degrees",
+                        "text": "degrees"
+                    },
+                    "HumanFriendlyText": {
+                        "lang_tag": "hft_ambient_temperature_goes_above",
+                        "text": "_DEVICE_NAME_ ambient temperature goes above _ARGUMENT_VALUE_ degrees"
+                    }
+                }
+            ]
+        },
+        {
+            "id": 9,
+            "label": {
+                "lang_tag": "ambient_temperature_goes_below",
+                "text": "Ambient temperature goes below"
+            },
+            "serviceId": "urn:upnp-org:serviceId:TemperatureSensor1",
+            "norepeat": "1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "CurrentTemperature",
+                    "comparisson": "<",
+                    "prefix": {
+                        "lang_tag": "temperature",
+                        "text": "Temperature"
+                    },
+                    "suffix": {
+                        "lang_tag": "degrees",
+                        "text": "degrees"
+                    },
+                    "HumanFriendlyText": {
+                        "lang_tag": "hft_ambient_temperature_goes_below",
+                        "text": "_DEVICE_NAME_ ambient temperature goes below _ARGUMENT_VALUE_ degrees"
+                    }
+                }
+            ]
+        },
+        {
+            "id": 10,
+            "label": {
+                "lang_tag": "rors_temperature_goes_above",
+                "text": "Remote Override Room Setpoint goes above"
+            },
+            "serviceId": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
+            "norepeat": "1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "RemoteOverrideRoomSetpoint",
+                    "comparisson": ">",
+                    "prefix": {
+                        "lang_tag": "temperature",
+                        "text": "Temperature"
+                    },
+                    "suffix": {
+                        "lang_tag": "degrees",
+                        "text": "degrees"
+                    },
+                    "HumanFriendlyText": {
+                        "lang_tag": "hft_rors_temperature_goes_above",
+                        "text": "_DEVICE_NAME_ Remote Override Room Setpoint goes above _ARGUMENT_VALUE_ degrees"
+                    }
+                }
+            ]
+        },
+        {
+            "id": 11,
+            "label": {
+                "lang_tag": "rors_temperature_goes_below",
+                "text": "Remote Override Room Setpoint goes below"
+            },
+            "serviceId": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
+            "norepeat": "1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "RemoteOverrideRoomSetpoint",
+                    "comparisson": "<",
+                    "prefix": {
+                        "lang_tag": "temperature",
+                        "text": "Temperature"
+                    },
+                    "suffix": {
+                        "lang_tag": "degrees",
+                        "text": "degrees"
+                    },
+                    "HumanFriendlyText": {
+                        "lang_tag": "hft_rors_temperature_goes_below",
+                        "text": "_DEVICE_NAME_ Remote Override Room Setpoint goes below _ARGUMENT_VALUE_ degrees"
+                    }
+                }
+            ]
+        },
+        {
+            "id": 12,
+            "label": {
+                "lang_tag": "csp_temperature_goes_above",
+                "text": "Current Setpoint goes above"
+            },
+            "serviceId": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
+            "norepeat": "1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "CurrentSetpoint",
+                    "comparisson": ">",
+                    "prefix": {
+                        "lang_tag": "temperature",
+                        "text": "Temperature"
+                    },
+                    "suffix": {
+                        "lang_tag": "degrees",
+                        "text": "degrees"
+                    },
+                    "HumanFriendlyText": {
+                        "lang_tag": "hft_csp_temperature_goes_above",
+                        "text": "_DEVICE_NAME_ Current Setpoint goes above _ARGUMENT_VALUE_ degrees"
+                    }
+                }
+            ]
+        },
+        {
+            "id": 13,
+            "label": {
+                "lang_tag": "csp_temperature_goes_below",
+                "text": "Current Setpoint goes below"
+            },
+            "serviceId": "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
+            "norepeat": "1",
+            "argumentList": [
+                {
+                    "id": 1,
+                    "dataType": "i4",
+                    "name": "CurrentSetpoint",
+                    "comparisson": "<",
+                    "prefix": {
+                        "lang_tag": "temperature",
+                        "text": "Temperature"
+                    },
+                    "suffix": {
+                        "lang_tag": "degrees",
+                        "text": "degrees"
+                    },
+                    "HumanFriendlyText": {
+                        "lang_tag": "hft_csp_temperature_goes_below",
+                        "text": "_DEVICE_NAME_ Current Setpoint goes below _ARGUMENT_VALUE_ degrees"
+                    }
+                }
+            ]
+        },
+        {
+            "id": 14,
+            "label": {
+                "lang_tag": "comm_fail",
+                "text": "Communication failure"
+            },
+            "serviceId": "urn:micasaverde-com:serviceId:HaDevice1",
+            "argumentList" : [
+                {
+                  "id": 1,
+                  "dataType": "boolean",
+                  "defaultValue": "1",
+                  "allowedValueList": [
+                    {
+                        "value": "0",
+                        "HumanFriendlyText": {
+                            "lang_tag": "comm_restored",
+                            "text": "_DEVICE_NAME_ communication has been restored"
+                        }
+                    },
+                    {
+                        "value": "1",
+                        "HumanFriendlyText": {
+                            "lang_tag": "comm_stopped",
+                            "text": "_DEVICE_NAME_ communication has stopped"
+                        }
+                    }
+                  ],
+                  "name": "CommFailure",
+                  "comparisson": "=",
+                  "prefix": {
+                    "lang_tag": "select_event",
+                    "text": "Select event"
+                  },
+                  "suffix": {}
+               }
+            ]
+        }
+    ],
+    "DeviceType": "urn:otgw-tclcode-com:device:HVAC_ZoneThermostat:1",
+    "device_type": "urn:otgw-tclcode-com:device:HVAC_ZoneThermostat:1"
+}

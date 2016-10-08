@@ -1,0 +1,118 @@
+<?xml version="1.0"?>
+<implementation>
+  <settings>
+    <protocol>crlf</protocol>
+  </settings>
+  <functions>
+	local pluginLib
+
+	function startup(lul_device)
+		luup.log("OTG: loading library L_OpenThermGateway...")
+		if (package.path:find ("/etc/cmh-ludl/?.lua;/etc/cmh-lu/?.lua", 1, true) == nil)
+      then
+			package.path = package.path .. ";/etc/cmh-ludl/?.lua;/etc/cmh-lu/?.lua"
+		end
+
+		package.loaded.L_OpenThermGateway = nil
+		pluginLib = require("L_OpenThermGateway")
+		if (package.loaded.L_OpenThermGateway == nil)
+		then
+			luup.log("OTG: plugin is not installed correctly. Library L_OpenThermGateway cannot be loaded.", 1)
+			luup.task("Plugin not correctly installed", 2, "OpenThermGateway", -1)
+         pluginLib = nil
+			return false
+		end
+
+		otgMessage = pluginLib.otgMessage
+		otgClockTimer = pluginLib.otgClockTimer
+		otgCallbackHandler = pluginLib.otgCallbackHandler
+		otgGenericCallback = pluginLib.otgGenericCallback
+		otgApplyEcoMeasures = pluginLib.otgApplyEcoMeasures
+		otgCheckHouseMode = pluginLib.otgCheckHouseMode
+		otgregisterWithAltUI = pluginLib.otgregisterWithAltUI
+
+		luup.log("OTG: library L_OpenThermGateway loaded")
+
+		return pluginLib.otgStartup(lul_device)
+	end
+  </functions>
+
+  <incoming>
+    <lua>
+      if (pluginLib ~= nil) 
+      then 
+         pluginLib.otgIncoming(lul_data)
+      end
+    </lua>
+  </incoming>
+
+  <startup>startup</startup>
+
+  <actionList>
+   <action>
+      <serviceId>urn:upnp-org:serviceId:TemperatureSetpoint1_Heat</serviceId>
+      <name>SetCurrentSetpoint</name>
+      <run>
+         if (pluginLib ~= nil) then pluginLib.otgSetCurrentSetpoint(lul_settings.NewCurrentSetpoint) end
+      </run>
+   </action>
+
+   <action>
+      <serviceId>urn:upnp-org:serviceId:HVAC_UserOperatingMode1</serviceId>
+      <name>SetModeTarget</name>
+      <run>
+         if (pluginLib ~= nil) then pluginLib.otgSetModeTarget(lul_settings.NewModeTarget) end
+      </run>
+   </action>
+   <action>
+      <serviceId>urn:upnp-org:serviceId:HVAC_UserOperatingMode1</serviceId>
+      <name>SetEnergyModeTarget</name>
+      <run>
+         if (pluginLib ~= nil) then pluginLib.otgSetEnergyModeTarget(lul_settings.NewModeTarget) end
+      </run>
+   </action>
+
+   <action>
+      <serviceId>urn:otgw-tclcode-com:serviceId:OpenThermGateway1</serviceId>
+      <name>SetOutsideTemperature</name>
+      <run>
+         if (pluginLib ~= nil) then pluginLib.otgSetOutsideTemperature(lul_settings.NewTemperature) end
+      </run>
+   </action>
+   <action>
+      <serviceId>urn:otgw-tclcode-com:serviceId:OpenThermGateway1</serviceId>
+      <name>SetRoomHumidity</name>
+      <run>
+         if (pluginLib ~= nil) then pluginLib.otgSetRoomHumidity(lul_settings.NewLevel) end
+      </run>
+   </action>
+   <action>
+      <serviceId>urn:otgw-tclcode-com:serviceId:OpenThermGateway1</serviceId>
+      <name>SendCommand</name>
+      <run>
+         if (pluginLib ~= nil) then pluginLib.otgSendCommand(lul_settings.Command) end
+      </run>
+   </action>
+   <action>
+      <serviceId>urn:otgw-tclcode-com:serviceId:OpenThermGateway1</serviceId>
+      <name>SetClock</name>
+      <run>
+         if (pluginLib ~= nil) then pluginLib.otgSetClock() end
+      </run>
+   </action>
+   <action>
+      <serviceId>urn:otgw-tclcode-com:serviceId:OpenThermGateway1</serviceId>
+      <name>SetDomesticHotWater</name>
+      <run>
+         if (pluginLib ~= nil) then pluginLib.otgSetDomesticHotWater(lul_settings.NewMode) end
+      </run>
+   </action>
+   <action>
+      <serviceId>urn:otgw-tclcode-com:serviceId:OpenThermGateway1</serviceId>
+      <name>ResetErrorCount</name>
+      <run>
+         if (pluginLib ~= nil) then pluginLib.otgResetErrorCount(lul_settings.Index) end
+      </run>
+   </action>
+   </actionList>
+</implementation>

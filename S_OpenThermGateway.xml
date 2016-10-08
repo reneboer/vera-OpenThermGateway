@@ -1,0 +1,120 @@
+<?xml version="1.0"?>
+<scpd xmlns="urn:schemas-upnp-org:service-1-0">
+  <specVersion>
+    <major>1</major>
+    <minor>1</minor>
+  </specVersion>
+  <serviceStateTable>
+    <stateVariable>
+      <name>GatewayMode</name>
+      <dataType>boolean</dataType>
+    </stateVariable>
+    <stateVariable sendEvents="yes">
+      <name>StatusCHEnabled</name>
+      <dataType>boolean</dataType>
+    </stateVariable>
+    <stateVariable sendEvents="yes">
+      <name>StatusDHWEnabled</name>
+      <dataType>boolean</dataType>
+    </stateVariable>
+    <stateVariable sendEvents="yes">
+      <name>StatusCoolEnabled</name>
+      <dataType>boolean</dataType>
+    </stateVariable>
+    <stateVariable sendEvents="yes">
+      <name>StatusOTCActive</name>
+      <dataType>boolean</dataType>
+    </stateVariable>
+    <stateVariable sendEvents="yes">
+      <name>StatusCH2Enabled</name>
+      <dataType>boolean</dataType>
+    </stateVariable>
+    <stateVariable sendEvents="yes">
+      <name>StatusFault</name>
+      <dataType>boolean</dataType>
+    </stateVariable>
+    <stateVariable sendEvents="yes">
+      <name>StatusCHMode</name>
+      <dataType>boolean</dataType>
+    </stateVariable>
+    <stateVariable sendEvents="yes">
+      <name>StatusDHWMode</name>
+      <dataType>boolean</dataType>
+    </stateVariable>
+    <stateVariable sendEvents="yes">
+      <name>StatusFlame</name>
+      <dataType>boolean</dataType>
+    </stateVariable>
+    <stateVariable sendEvents="yes">
+      <name>StatusCooling</name>
+      <dataType>boolean</dataType>
+    </stateVariable>
+    <stateVariable sendEvents="yes">
+      <name>StatusCH2Mode</name>
+      <dataType>boolean</dataType>
+    </stateVariable>
+    <stateVariable sendEvents="yes">
+      <name>StatusDiagnostic</name>
+      <dataType>boolean</dataType>
+    </stateVariable>
+    <stateVariable sendEvents="yes">
+      <name>CurrentSetpoint</name>
+      <dataType>i4</dataType>
+    </stateVariable>
+    <stateVariable sendEvents="yes">
+      <name>RemoteOverrideRoomSetpoint</name>
+      <dataType>i4</dataType>
+    </stateVariable>
+  </serviceStateTable>
+  <actionList>
+    <action>
+      <name>SetOutsideTemperature</name>
+      <argumentList>
+        <argument>
+          <name>NewTemperature</name>
+          <direction>in</direction>
+        </argument>
+      </argumentList>
+    </action>
+    <action>
+      <name>SetRoomHumidity</name>
+      <argumentList>
+        <argument>
+          <name>NewLevel</name>
+          <direction>in</direction>
+        </argument>
+      </argumentList>
+    </action>
+    <action>
+      <name>SendCommand</name>
+      <argumentList>
+        <argument>
+          <name>Command</name>
+          <direction>in</direction>
+        </argument>
+      </argumentList>
+    </action>
+    <action>
+      <name>SetDomesticHotWater</name>
+      <argumentList>
+        <argument>
+          <name>NewMode</name>
+          <direction>in</direction>
+        </argument>
+      </argumentList>
+    </action>
+    <action>
+      <name>SetClock</name>
+      <argumentList/>
+    </action>
+    <action>
+      <name>ResetErrorCount</name>
+      <argumentList>
+        <argument>
+          <name>Index</name>
+          <direction>in</direction>
+        </argument>
+      </argumentList>
+    </action>
+ </actionList>
+</scpd>
