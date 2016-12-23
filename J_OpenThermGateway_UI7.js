@@ -259,10 +259,13 @@ var OpenThermGateway = (function (api) {
 			var deviceID = api.getCpanelDeviceId();
 			var deviceList = api.getListOfDevices();
 			var yesNo = [{value:'',label:'N/A'},{value:'1',label:'Yes'}];
+			var partitions = [{value:'',label:'None'}];
 			var doors = [];
-			// Find door/window sensors
+			// Find alarm/door/window sensors
 			$.each(deviceList,function(key, dev) {
-				if (dev.category_num == 4 && dev.subcategory_num == 1) {
+				if (dev.category_num == 23) {
+					partitions.push({'value':dev.id,'label':dev.name});
+				} else if (dev.category_num == 4 && dev.subcategory_num == 1) {
 					doors.push({'value':dev.id,'label':dev.name});
 				}
 			});
@@ -284,10 +287,15 @@ var OpenThermGateway = (function (api) {
 				'<h4>Default Eco mode options</h4>'+
 				htmlAddPulldown(deviceID, 'Change domestic hot water', 'PluginEcoDHW', dhwOptions)+
 				htmlAddPulldown(deviceID, 'Change room setpoint', 'PluginEcoTemp', tempOptions)+
+				'<h4>Eco options when Armed Away</h4>';
 			// Away Eco
-				'<h4>Eco options when House Mode is Away</h4>'+
+			if (partitions.length != 1) {
+				html += htmlAddPulldown(deviceID, 'Select alarm panel partition device', 'PluginPartitionDevice', partitions)+
 				htmlAddPulldown(deviceID, 'Change domestic hot water', 'PluginArmedAwayDHW', dhwOptions)+
 				htmlAddPulldown(deviceID, 'Change room setpoint', 'PluginArmedAwayTemp', tempOptions);
+			} else {
+				html += '<i>No alarm partition found.</i>';
+			}
 
 			// Open Eco
 			html += '<h4>Eco options when a door/window is open</h4>';

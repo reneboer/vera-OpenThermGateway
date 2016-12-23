@@ -3,8 +3,15 @@
 
 	Written by nlrb, modified for UI7 and ALTUI by Rene Boer
 	
-	V1.6 7 October 2016
+	V1.8 20 December 2016
 	
+	V1.8 Changes:
+			Added support for presets House Modes dashboard.
+			Restored Alarm Pannel options for UI7. You now can set Eco or Normal in House Modes dashboard and it uese the default Eco settings for that.
+			
+	V1.7 Changes:
+			Added a watch to RemoteOverrideRoomSetpoint to keep override temp in case House mode is vacation.
+			
 	V1.6 Changes:
 			Some clean ups.
 			Proper support of the Disabled attribute.
@@ -21,7 +28,7 @@
 			Added 60 seconds polling of Home / Away status instead of monitoring an alarm pannel status. When Away/Vacation ECO options are used, when Home restored.
 			Use of otg. variable container to reduce number of variabled (Vera can handle up to 60, but less is better)
 			
---]==]
+]==]
 
 module("L_OpenThermGateway", package.seeall)
 
@@ -67,7 +74,7 @@ function string:split(sep)
 end
 
 local otg = {  -- Plugin data
-	PLUGIN_VERSION = "1.6",
+	PLUGIN_VERSION = "1.8",
 	Description = "OpenThermGateway",
 	--- SERVICES ---
 	GATEWAY_SID    = "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
@@ -100,6 +107,7 @@ local otg = {  -- Plugin data
 	ResponseQueue = Queue.new(),
 	ui7Check = false,
 	Disabled = false,
+	MinimalSetPoint = 14,
 	
 	--- DEBUGGING ---
 	LogDebug = 0,
@@ -271,6 +279,7 @@ local otg = {  -- Plugin data
 
 local otgPluginInit_t = {
    UI7 = { var = "PluginUI7", init = "false" },
+   CMC = { var = "CustomModeConfiguration", sid = otg.HA_DEV_SID, init = "Normal;CMDNormal;"..otg.HVAC_USER_SID.."/SetEnergyModeTarget/NewModeTarget=Normal|Eco;CMDEco;"..otg.HVAC_USER_SID.."/SetEnergyModeTarget/NewModeTarget=EnergySavingsMode" },
    MEM = { var = "PluginMemoryUsed", init = "0" },
    VER = { var = "PluginVersion", init = otg.PLUGIN_VERSION, reset = true },
    DBG = { var = "PluginDebug", init = "0" },
@@ -299,6 +308,7 @@ local otgPluginInit_t = {
 
 -- Variable to watch and register handler for; device id filled dynamically
 local otgWatchVar_t = {
+   ROVR = { src = "", sid = otg.GATEWAY_SID, var = "RemoteOverrideRoomSetpoint", dev = nil },
    TEMP = { src = "PluginOutsideSensor", sid = otg.TEMP_SENS_SID, var = "CurrentTemperature", dev = nil },
    HUMY = { src = "PluginHumiditySensor", sid = otg.HUMY_SENS_SID, var = "CurrentLevel", dev = nil },
    PART = { src = "PluginPartitionDevice", sid = otg.PARTITION_SID, var = "DetailedArmMode", dev = nil },
@@ -633,23 +643,38 @@ function otgWriteCommand(cmd, response)
    end
 end
 
--- Check the current House Mode (UI7 only) every 60 seconds
+-- Check the current House Mode (UI7 only) to make sure Eco measures stay active in Vacation mode
 function otgCheckHouseMode()
-	if (otg.ui7Check) then
-		local house_mode = tonumber((luup.attr_get("Mode",0)))
-		if (otg.PrevMode == nil) then otg.PrevMode = house_mode end
-		if (house_mode ~= otg.PrevMode) then
-			otgApplyEcoMeasures({ PART_DHW = otg.EcoMeasure_t.PART_DHW, PART_TMP = otg.EcoMeasure_t.PART_TMP })
-			otg.PrevMode = house_mode
+	-- Get curent Remote Override Room Setpoint. When zero, Thermostat runs normal program.
+	local curROVR, tstamp  = luup.variable_get(otgWatchVar_t.ROVR.sid, otgWatchVar_t.ROVR.var, otgWatchVar_t.ROVR.dev)
+	curROVR = tonumber(curROVR) or -1
+	debug("otgCheckHouseMode " .. curROVR)
+	if (curROVR == 0) then
+		local now = os.time() - 60
+		if (tstamp > now) then 
+			-- Wait a bit if it was changed less then a minute ago, else thermostat may not respond to restoreing it properly.
+			luup.call_delay("otgCheckHouseMode", 65, "") 
+		else
+			-- See if House mode is Vacation
+			local house_mode = tonumber((luup.attr_get("Mode",0)))
+			if (house_mode == 4) then
+				local ecoState = varGet(otgPluginInit_t.ECO.var)
+				-- Check for default ECO mode being active
+				measure = otg.EcoMeasure_t.DECO_TMP
+				measureOn = (string.find(ecoState, measure.state, 1, true) ~= nil)
+				if (measureOn) then 
+					-- Active, so restore Remote Override Room Setpoint
+					local temp = tonumber(varGet(otgPluginInit_t[measure.var].var)) or 0 
+					otgSetCurrentSetpoint(temp,true)
+					debug("otgCheckHouseMode restore to Default Eco temp "..temp)
+				end	
+			end
 		end
-		local AppMemoryUsed =  math.floor(collectgarbage "count")         -- app's own memory usage in kB
-		updateIfNeeded(otg.GATEWAY_SID, otgPluginInit_t.MEM.var, AppMemoryUsed, otg.Device)
-		luup.call_delay("otgCheckHouseMode", 60, "")
 	end
 end
 
 -- Register with ALTUI if installed
-function otgregisterWithAltUI()
+function otgRegisterWithAltUI()
 	-- Register with ALTUI once it is ready
 	for k, v in pairs(luup.devices) do
 		if (v.device_type == "urn:schemas-upnp-org:device:altui:1") then
@@ -663,32 +688,32 @@ function otgregisterWithAltUI()
 				arguments["newStyleFunc"] = ""	
 				arguments["newDeviceIconFunc"] = ""	
 				arguments["newControlPanelFunc"] = ""	
+
 				-- Main device
 				luup.call_action(otg.ALTUI_SID, "RegisterPlugin", arguments, k)
 			else
 				debug("ALTUI plugin is not yet ready, retry in a bit..")
-				luup.call_delay("otgregisterWithAltUI", 10, "", false)
+				luup.call_delay("otgRegisterWithAltUI", 10, "", false)
 			end
 			break
 		end
 	end
-
 end
 
 -- Initialises the plugin, handlers etc.
 function otgStartup(lul_device)
-   otg.Device = lul_device
-   local i, key, tab
+	otg.Device = lul_device
+	local i, key, tab
 
-   debug("Starting ... device #" .. tostring(otg.Device))
+	debug("Starting ... device #" .. tostring(otg.Device))
    
-   -- Initialize UPnP variables
-   for key, tab in pairs(otgPluginInit_t) do
-      local sid = tab.sid or otg.GATEWAY_SID
-      local init = tab.init or ""
-      local reset = tab.reset or false
-      updateIfNeeded(sid, tab.var, init, otg.Device, not(reset))
-   end
+	-- Initialize UPnP variables
+	for key, tab in pairs(otgPluginInit_t) do
+		local sid = tab.sid or otg.GATEWAY_SID
+		local init = tab.init or ""
+		local reset = tab.reset or false
+		updateIfNeeded(sid, tab.var, init, otg.Device, not(reset))
+	end
 
 	-- For UI7 update the JS reference
 	local ui7Check = varGet(otgPluginInit_t.UI7.var)
@@ -705,7 +730,7 @@ function otgStartup(lul_device)
 	otgCreateChildren(otg.MsgCreateChild_t)
 	
 	-- Register with ALTUI for proper drawing, we use build-in drawZoneThermostat (or drawHeater)
-	otgregisterWithAltUI()
+	otgRegisterWithAltUI()
 
 	-- See if user disabled plug-in 
 	local isDisabled = luup.attr_get("disabled", otg.Device)
@@ -716,87 +741,85 @@ function otgStartup(lul_device)
 		return true, "Plug-in Disabled.", otg.Description
 	end
 
-   -- Get log path
-   local path = varGet(otgPluginInit_t.LOG.var)
-   if (string.sub(path, string.len(path)) ~= "/") then
-      path = path .. "/"
-   end
-   if (path ~= nil) then
-      local f = io.open(path, "r")
-      if (f ~= nil) then
-         otg.LogPath = path
-      else
-         debug(path .. " does not exist.")
-      end
-   end
+	-- Get log path
+	local path = varGet(otgPluginInit_t.LOG.var)
+	if (string.sub(path, string.len(path)) ~= "/") then path = path .. "/" end
+	if (path ~= nil) then
+		local f = io.open(path, "r")
+		if (f ~= nil) then
+			otg.LogPath = path
+		else
+			debug(path .. " does not exist.")
+		end
+	end
    
-   -- Make debug file names device unique
-   otg.LogFilename = otg.LogPath .. string.gsub(otg.LogFilename, "<id>", tostring(otg.Device))
-   otg.LogDebug = tonumber(varGet(otgPluginInit_t.DBG.var))
+	-- Make debug file names device unique
+	otg.LogFilename = otg.LogPath .. string.gsub(otg.LogFilename, "<id>", tostring(otg.Device))
+	otg.LogDebug = tonumber(varGet(otgPluginInit_t.DBG.var))
 
-   -- Check if connected via IP
-   local ip = luup.devices[otg.Device].ip
-   if (ip ~= "") then
-      local ipaddr, port = string.match(ip, "(.-):(.*)")
-      debug("IP = " .. ipaddr .. ", port = " .. port)
-      luup.io.open(otg.Device, ipaddr, tonumber(port))
-   end
+	-- Check if connected via IP
+	local ip = luup.devices[otg.Device].ip
+	if (ip ~= "") then
+		local ipaddr, port = string.match(ip, "(.-):(.*)")
+		debug("IP = " .. ipaddr .. ", port = " .. port)
+		luup.io.open(otg.Device, ipaddr, tonumber(port))
+	end
    
-   -- Check connection
-   if (luup.io.is_connected(otg.Device) == false) then
-      otgMessage("Please select the Serial device or IP address for the OpenTherm Gateway", 2)
-	  setluupfailure(2, otg.Device)
-      return false
-   end
+	-- Check connection
+	if (luup.io.is_connected(otg.Device) == false) then
+		otgMessage("Please select the Serial device or IP address for the OpenTherm Gateway", 2)
+		setluupfailure(2, otg.Device)
+		return false
+	end
    
-   -- Register luup web handlers
-   luup.register_handler("otgCallbackHandler", "GetMessages" .. otg.Device)
-   luup.register_handler("otgCallbackHandler", "GetSupportedMessages" .. otg.Device)
-   luup.register_handler("otgCallbackHandler", "GetMessageFile" .. otg.Device)
-   luup.register_handler("otgCallbackHandler", "GetConfiguration" .. otg.Device)
+	-- Register luup web handlers
+	luup.register_handler("otgCallbackHandler", "GetMessages" .. otg.Device)
+	luup.register_handler("otgCallbackHandler", "GetSupportedMessages" .. otg.Device)
+	luup.register_handler("otgCallbackHandler", "GetMessageFile" .. otg.Device)
+	luup.register_handler("otgCallbackHandler", "GetConfiguration" .. otg.Device)
    
-   -- Register variables to watch
-   for key, tab in pairs(otgWatchVar_t) do
-      local devices = varGet(tab.src)
-      if (devices ~= nil and devices ~= "") then
-         tab.dev = devices:split()
-         for i, val in pairs(tab.dev) do
-            debug("Registering variable " .. tab.var .. " from device " .. i)
-            luup.variable_watch("otgGenericCallback", tab.sid, tab.var, i)
-         end
-      end
-   end
+	-- Register variables to watch
+	for key, tab in pairs(otgWatchVar_t) do
+		local devices = varGet(tab.src)
+		if (devices ~= "") then
+			tab.dev = devices:split()
+			for i, val in pairs(tab.dev) do
+				debug("Registering variable " .. tab.var .. " from device " .. i)
+				luup.variable_watch("otgGenericCallback", tab.sid, tab.var, i)
+			end
+		else	 
+			-- V1.7 add watches support on own device
+			tab.dev = {} 
+			tab.dev[otg.Device] = otg.Device
+			luup.variable_watch("otgGenericCallback", tab.sid, tab.var, otg.Device)
+		end
+	end
    
-   -- Get error count locally
-   local errors = varGet(otgPluginInit_t.ERR.var)
-   string.gsub(errors, "([^,]+)", function(c) otg.ErrorCnt_t[#otg.ErrorCnt_t + 1] = tonumber(c) end)
+	-- Get error count locally
+	local errors = varGet(otgPluginInit_t.ERR.var)
+	string.gsub(errors, "([^,]+)", function(c) otg.ErrorCnt_t[#otg.ErrorCnt_t + 1] = tonumber(c) end)
 
-   -- Get firmware version
-   local success = otgWriteCommand("PR=" .. otgConfig_t.VER.rep, "VER") -- get Firmware version
-   if (success == false) then
-	  setluupfailure(1, otg.Device)
-      return false
-   end
+	-- Get firmware version
+	local success = otgWriteCommand("PR=" .. otgConfig_t.VER.rep, "VER") -- get Firmware version
+	if (success == false) then
+		setluupfailure(1, otg.Device)
+		return false
+	end
 
-   -- Store gateway mode locally
-   otg.GatewayMode = (varGet(otgConfig_t.GW.var) == "1")
+	-- Store gateway mode locally
+	otg.GatewayMode = (varGet(otgConfig_t.GW.var) == "1")
    
-   -- Generate children
---   local childList = varGet(otgPluginInit_t.CHD.var)
---   otg.MsgCreateChild_t = childList:split()
---   otgCreateChildren(otg.MsgCreateChild_t)
+	-- Set timer to update gateway clock periodically & check connection (make sure the first call is at 0 seconds)
+	local when = os.date("%Y-%m-%d %H:%M:00", (os.time() + 60))
+	luup.call_timer("otgClockTimer", 4, when, "", "")
    
-   -- Set timer to update gateway clock periodically & check connection (make sure the first call is at 0 seconds)
-   local when = os.date("%Y-%m-%d %H:%M:00", (os.time() + 60))
-   luup.call_timer("otgClockTimer", 4, when, "", "")
-   
-   -- Fake ventilation support for Humidity sensor
-   if (otgWatchVar_t.HUMY.dev ~= nil) then
-      otgWriteCommand("SR=70:0,0")
-   end
-	-- Start looking at the House Mode
-	otgCheckHouseMode()
---	otgregisterWithAltUI()
+	-- Fake ventilation support for Humidity sensor
+	if (otgWatchVar_t.HUMY.dev ~= nil) then
+		otgWriteCommand("SR=70:0,0")
+	end
+	
+	-- Start looking at the House Mode on UI7 so we can lock the temp override when in Vacation Mode
+	if (otg.ui7Check) then luup.call_delay("otgCheckHouseMode", 180, "") end
    
 	-- Done
 	setluupfailure(0, otg.Device)
@@ -960,9 +983,6 @@ function otgIncoming(data)
                otg.GatewayMode = (val == "1")
             end
             updateIfNeeded(otg.GATEWAY_SID, elem_t.var, val, otg.Device)
-            -- call specific message handler (if available)
---            if (elem_t.handler ~= nil) then
---               elem_t.handler(data, val)
             if (elem == "VER") then
 				otgConfig_t_VER_handler(data, val)
             end
@@ -1040,7 +1060,7 @@ end
 --- ACTION FUNCTIONS ---
 
 -- otgSetCurrentSetpoint
-function otgSetCurrentSetpoint(NewCurrentSetpoint, Constant)
+function otgSetCurrentSetpoint(NewCurrentSetpoint)
    debug("otgSetCurrentSetpoint " .. (NewCurrentSetpoint or "")..", constant "..(Constant and "true" or "false"))
    if (otg.GatewayMode == true) then
       -- If negative value, subtract from current
@@ -1048,11 +1068,10 @@ function otgSetCurrentSetpoint(NewCurrentSetpoint, Constant)
       if (setpoint ~= nil and setpoint < 0) then
          local current = luup.variable_get(otg.TEMP_SETP_SID, "CurrentSetpoint", otg.Device)
          setpoint = current + setpoint
+		 if setpoint < otg.MinimalSetPoint then setpoint = otg.MinimalSetPoint end -- avoid temp set too low
       end
-      luup.variable_set(otg.TEMP_SETP_SID, "CurrentSetpoint", setpoint, otg.Device)
-	  local cmd = "TT"
-	  if (Constant == true) then cmd = "TC" end
-      return otgWriteCommand(cmd.."="..setpoint) -- Temperature temporary
+      updateIfNeeded(otg.TEMP_SETP_SID, "CurrentSetpoint", setpoint, otg.Device)
+      return otgWriteCommand("TT="..setpoint) -- Temperature temporary
    else
       otgMessage("SetCurrentSetpoint only possible in Gateway mode", 2)
    end
@@ -1094,7 +1113,7 @@ local otgOpenTime = 0
 function otgEvalCondition(check)
 	local result = false
 	local delay = 0
-	-- For UI7 we do not have the security pannel but build in house mode, so val will be empty
+	-- For UI7 we do not use the security panel but build in house mode, so val will be empty
 	if (otg.ui7Check and check.cond == "AWAY") then
 		-- Check for Away or Vacation in UI7
 		debug("Starting evaluation of House Mode ")
@@ -1143,86 +1162,69 @@ end
 local delayedMeasure_t
 -- otgApplyEcoMeasures
 function otgApplyEcoMeasures(measure_t, forceOff)
-   if (type(measure_t) == "string") then
-      measure_t = delayedMeasure_t
-   end
-   local apply = false
-   forceOff = forceOff or false -- true when called with delay
-   local ecoState = varGet(otgPluginInit_t.ECO.var)
-   local measure, val
-   for measure, val in pairs(measure_t) do
-      local var = otgPluginInit_t[val.var].var
-      debug(measure .. " / " .. var)
-      local action = varGet(var)
-      if (action ~= "" and action ~= "0") then
-         local measureOn = (string.find(ecoState, otg.EcoMeasure_t[measure].state, 1, true) ~= nil)
-         local delay = 0
-         apply = (val.chk == nil)
-         if (forceOff == false) then
-            -- Not a forced off, so evaluate what we need to do
-            if (val.chk ~= nil) then
-               -- Check conditions
-               if (val.chk.cond == nil) then
-                  local key, t
-                  apply = true
-                  for key, t in pairs(val.chk) do
-                     local a, d = otgEvalCondition(t)
-                     apply = apply and a
-                     if (d > delay) then 
-                        delay = d
-                     end
-                  end
-               else
-                  apply, delay = otgEvalCondition(val.chk)
-               end
-            end
-         else -- force eco measure off
-            apply = false
-         end
-         debug("Evaluation done; apply = " .. (apply and "true" or "false") .. ", delay = " .. delay)
-         if (apply == false and measureOn == true) then
-            debug("Reverting eco measure " .. val.txt)
-            if (measure == "DECO_DHW" or measure == "PART_DHW") then
-               otgSetDomesticHotWater("Automatic")
-            elseif (measure == "DECO_TMP" or measure == "PART_TMP" or measure == "DOOR_TMP") then
-               -- Assumption: it cannot be that you were armed away with the doors open
-               otgSetModeTarget("Off")
-            end
-            otgUpdateEcoState(otg.EcoMeasure_t[measure].state, "off")
-         elseif (apply == true and measureOn == false) then
-            debug("Applying eco measure " .. val.txt)
-            if (measure == "DECO_DHW" or measure == "PART_DHW") then
-				otgSetDomesticHotWater("Disable")
-            elseif (measure == "DECO_TMP" or measure == "PART_TMP" or measure == "DOOR_TMP") then
-				local temp = varGet(var)
-				-- See if house mode is vacation so need to set constant temp.
-				local const = false
-				if (otg.ui7Check) then
-					local house_mode = tonumber((luup.attr_get("Mode",0)))
-					const = (house_mode == 4)
+	if (type(measure_t) == "string") then
+		measure_t = delayedMeasure_t
+	end
+	local apply = false
+	forceOff = forceOff or false -- true when called with delay
+	local ecoState = varGet(otgPluginInit_t.ECO.var)
+	local measure, val
+	for measure, val in pairs(measure_t) do
+		local var = otgPluginInit_t[val.var].var
+		debug(measure .. " / " .. var)
+		local action = varGet(var)
+		if (action ~= "" and action ~= "0") then
+			local measureOn = (string.find(ecoState, otg.EcoMeasure_t[measure].state, 1, true) ~= nil)
+			local delay = 0
+			if (forceOff == false) then
+				-- Not a forced off, so evaluate what we need to do
+				if (val.chk ~= nil) then
+					-- Check conditions
+					if (val.chk.cond == nil) then
+						local key, t
+						apply = true
+						for key, t in pairs(val.chk) do
+							local a, d = otgEvalCondition(t)
+							apply = apply and a
+							if (d > delay) then delay = d end
+						end
+					else
+						apply, delay = otgEvalCondition(val.chk)
+					end
+				else -- When no paramter to check, apply change	always (default Eco)
+					apply = true
 				end
-				otgSetCurrentSetpoint(temp,const)
-            else
-				debug("Unimplemented measure: " .. measure)
-            end
-            otgUpdateEcoState(otg.EcoMeasure_t[measure].state, "on")
-         elseif (apply == true and measureOn == true) then
-            debug("Update eco measure " .. val.txt)
-            if (otg.ui7Check and measure == "PART_TMP") then
-				local temp = varGet(var)
-				-- See if house mode is changing between Away and Vacation so need to set constant temp.
-				local house_mode = tonumber((luup.attr_get("Mode",0)))
-				local const = (house_mode == 4)
-				otgSetCurrentSetpoint(temp,const)
-            end
-         elseif (delay > 0 and measureOn == false) then
-            debug("Will re-evaluate eco measure " .. val.txt .. " in " .. delay .. " seconds")
-            delayedMeasure_t = measure_t
-            luup.call_delay("otgApplyEcoMeasures", delay, "delayedMeasure_t")
-         end
-      end
-   end
-   return apply
+			else -- force eco measure off
+				apply = false
+			end
+			debug("Evaluation done; apply = " .. (apply and "true" or "false") .. ", delay = " .. delay)
+			if (apply == false and measureOn == true) then
+				debug("Reverting eco measure " .. val.txt)
+				if (measure == "DECO_DHW" or measure == "PART_DHW") then
+					otgSetDomesticHotWater("Automatic")
+				elseif (measure == "DECO_TMP" or measure == "PART_TMP" or measure == "DOOR_TMP") then
+					-- Assumption: it cannot be that you were armed away with the doors open
+					otgSetModeTarget("Off")
+				end
+				otgUpdateEcoState(otg.EcoMeasure_t[measure].state, "off")
+			elseif (apply == true and measureOn == false) then
+				debug("Applying eco measure " .. val.txt)
+				if (measure == "DECO_DHW" or measure == "PART_DHW") then
+					otgSetDomesticHotWater("Disable")
+				elseif (measure == "DECO_TMP" or measure == "PART_TMP" or measure == "DOOR_TMP") then
+					otgSetCurrentSetpoint(action)
+				else
+					debug("Unimplemented measure: " .. measure)
+				end
+				otgUpdateEcoState(otg.EcoMeasure_t[measure].state, "on")
+			elseif (delay > 0 and measureOn == false) then
+				debug("Will re-evaluate eco measure " .. val.txt .. " in " .. delay .. " seconds")
+				delayedMeasure_t = measure_t
+				luup.call_delay("otgApplyEcoMeasures", delay, "delayedMeasure_t")
+			end
+		end
+	end
+	return apply
 end
 
 -- otgSetEnergyModeTarget
@@ -1246,6 +1248,8 @@ function otgGenericCallback(lul_device, lul_service, lul_variable, lul_value_old
       otgSetOutsideTemperature(lul_value_new)
    elseif (otgWatchVar_t.HUMY.dev ~= nil and otgWatchVar_t.HUMY.dev[lul_device] ~= nil) then
       otgSetRoomHumidity(lul_value_new)
+   elseif (otgWatchVar_t.ROVR.dev ~= nil and otgWatchVar_t.ROVR.dev[lul_device] ~= nil) then  -- V1.7
+      otgCheckHouseMode()
    else
       if (otgWatchVar_t.PART.dev[lul_device] ~= nil and lul_variable == otgWatchVar_t.PART.var) then
          otgApplyEcoMeasures({ PART_DHW = otg.EcoMeasure_t.PART_DHW, PART_TMP = otg.EcoMeasure_t.PART_TMP })
