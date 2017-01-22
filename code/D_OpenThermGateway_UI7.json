@@ -1,5 +1,31 @@
 {
     "default_icon": "thermostat_device_default.png",
+    "state_icons": [
+        {
+            "img": "thermostat_mode_off.png",
+            "conditions": [
+                {
+                    "service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
+                    "variable": "ModeStatus",
+                    "operator": "==",
+                    "value": "Off"
+                }
+            ]
+        },
+        {
+            "img": "thermostat_mode_heating.png",
+            "conditions": [
+                {
+                    "service": "urn:upnp-org:serviceId:HVAC_UserOperatingMode1",
+                    "variable": "ModeStatus",
+                    "operator": "==",
+                    "value": "HeatOn"
+                }
+            ]
+        }
+    ],
+    "x": "2",
+    "y": "4",
     "ToggleButton": 1,
     "inScene": "1",
     "DisplayStatus": {
