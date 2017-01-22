@@ -234,7 +234,7 @@ var OpenThermGateway = (function (api) {
 			var n = txt.search(/\([^\)]+\)/);
 			var unit = "";
 			if (n > 0) {
-				unit = txt.substring(n+1, txt.length-1).replace('°', '&deg;');
+				unit = txt.substring(n+1, txt.length-1).replace('Â°', '&deg;');
 				txt = txt.substr(0, n-1);
 			}
 			var sub = row[1];
