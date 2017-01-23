@@ -3,8 +3,15 @@
 
 	Written by nlrb, modified for UI7 and ALTUI by Rene Boer
 	
-	V1.9 22 January 2017
+	V1.11 23 January 2017
 	
+	V1.11 Changes:
+			Renamed string:split function to to string:otg_split as it caused issues on openLuup. It seems all code share the same name space.
+			Set functions to local as much as possible to avoid similar issues on other named functions.
+	
+	V1.10 Changes:
+			Use luup.att_get to get the OTG IP address and port to use.
+			
 	V1.9 Changes:
 			Minor change to string:split function to avoid code errors causing ALTUI to fail on openLuup.
 	
@@ -42,7 +49,6 @@ local json = require("dkjson") 	 -- Needed for converting tables to JSON strings
 -------------------------------------------------------------
 -- Monitor and control the OpenTherm Gateway via Mios Vera --
 -------------------------------------------------------------
- 
 --- QUEUE STRUCTURE ---
 local Queue = {}
 function Queue.new()
@@ -67,17 +73,9 @@ end
 function Queue.len(list)
    return list.last - list.first + 1
 end
-
---- STRING SPLIT ---
-function string:split(sep)
-   local sep, tab_t = sep or ",", {}
-   local pattern = string.format("([^%s]+)", sep)
-   self:gsub(pattern, function(c)  if (tonumber(c) ~= nil) then tab_t[tonumber(c)] = c end end)	
-   return tab_t
-end
-
+ 
 local otg = {  -- Plugin data
-	PLUGIN_VERSION = "1.8",
+	PLUGIN_VERSION = "1.10",
 	Description = "OpenThermGateway",
 	--- SERVICES ---
 	GATEWAY_SID    = "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
@@ -430,6 +428,15 @@ local otgVersionConfig_t = {
 ---------------------------------------------------------------------------------------------
 -- Utility functions
 ---------------------------------------------------------------------------------------------
+
+--- STRING SPLIT ---
+function string:otg_split(sep)
+   local sep, tab_t = sep or ",", {}
+   local pattern = string.format("([^%s]+)", sep)
+   self:gsub(pattern, function(c)  if (tonumber(c) ~= nil) then tab_t[tonumber(c)] = c end end)	
+   return tab_t
+end
+
 -- Get variable value.
 -- Use SM_SID and THIS_DEVICE as defaults
 local function varGet(name, device, service)
@@ -476,7 +483,7 @@ local function setluupfailure(status,devID)
 end
 
 -- Update a system variable only if the value will change
-function updateIfNeeded(sid, var, newVal, id, createOnly)
+local function updateIfNeeded(sid, var, newVal, id, createOnly)
    if (sid ~= nil and var ~= nil and newVal ~= nil and id ~= nil) then
       local curVal = luup.variable_get(sid, var, id)
       local valUpdate = (curVal == nil) or ((createOnly ~= true) and (curVal ~= tostring(newVal)) or false)
@@ -489,7 +496,7 @@ function updateIfNeeded(sid, var, newVal, id, createOnly)
 end
 
 -- Find child device (Taken from GE Caddx Panel but comes originally from guessed)
-function findChild(deviceId, label)
+local function findChild(deviceId, label)
    for k, v in pairs(luup.devices) do
       if (v.device_num_parent == deviceId and v.id == label) then
          return k
@@ -499,7 +506,7 @@ function findChild(deviceId, label)
 end
 
 -- debug
-function debug(s, level)
+local function debug(s, level)
    if (otg.LogDebug > 0) then
       local lvl = otg.DebugLevel_t[level] or otg.DebugLevel_t.INFO
       if (bitw.band(otg.LogDebug, lvl) > 0) then
@@ -509,7 +516,7 @@ function debug(s, level)
 end
 
 -- otgLogInfo
-function otgLogInfo(text)
+local function otgLogInfo(text)
    if (otg.LogDebug == otg.DebugLevel_t.FILE) then
       local logfile = otg.LogFilename
       -- empty file if it reaches 250kb
@@ -529,7 +536,7 @@ function otgLogInfo(text)
    end
 end
 
--- otgMessage
+-- otgMessage (global function)
 local otgLuupTaskHandle = -1
 function otgMessage(text, status)
    if (status == nil) then
@@ -544,7 +551,7 @@ function otgMessage(text, status)
 end
 
 -- otgCreateChildren
-function otgCreateChildren(child_t)
+local function otgCreateChildren(child_t)
    debug("otgCreateChildren")
    local childDevices = luup.chdev.start(otg.Device)
    local embed = (varGet(otgPluginInit_t.EMB.var) == "1")
@@ -576,7 +583,7 @@ function otgCreateChildren(child_t)
 end
 
 -- otgDecodeMessage
-function otgDecodeMessage(val1, msgVal, val2)
+local function otgDecodeMessage(val1, msgVal, val2)
    local val = ""
    if (msgVal == "u16") then -- unsigned 16
       val = val1*256 + val2
@@ -613,7 +620,7 @@ function otgDecodeMessage(val1, msgVal, val2)
 end
 
 -- otgWriteCommand: write a command to the OTG
-function otgWriteCommand(cmd, response)
+local function otgWriteCommand(cmd, response)
    if (cmd == nil) then
       if (Queue.len(otg.SendQueue) > 0) then
          local pop_t = Queue.pop(otg.SendQueue)
@@ -646,8 +653,41 @@ function otgWriteCommand(cmd, response)
    end
 end
 
--- Check the current House Mode (UI7 only) to make sure Eco measures stay active in Vacation mode
-function otgCheckHouseMode()
+--- HANDLERS ---
+
+--function otgConfig_t.VER.handler(cmd, version)
+local function otgConfig_t_VER_handler(cmd, version)
+   debug("otgHandleVersion cmd = " .. cmd .. ", version = " .. version)
+   -- Determine firmware version as this has an effect on commands and reponses
+   if (version ~= nil) then
+      local major = tonumber(string.match(version, "(%d+)\."))
+      -- Update the command table if needed
+      if (major ~= nil) then
+         otg.MajorVersion = major
+         if (otgVersionConfig_t[major] ~= nil) then
+            local key, elem, x, y
+            for key, elem in pairs(otgVersionConfig_t[major]) do
+               if (otgConfig_t[key] == nil) then
+                  otgConfig_t[key] = {} -- new command
+               end
+               for x, y in pairs(elem) do
+                  otgConfig_t[key][x] = y
+               end
+            end
+         end
+      end
+   end
+   -- Send report commands to Gateway to receive settings
+   for i, elem in ipairs(otg.Startup_t) do
+      if (otgConfig_t[elem] ~= nil) then
+         otgWriteCommand("PR=" .. otgConfig_t[elem].rep, elem) -- get OTG value
+      end
+   end
+end
+
+
+-- Check the current House Mode (UI7 only) to make sure Eco measures stay active in Vacation mode (global function)
+function otgCheckHouseMode() 
 	-- Get curent Remote Override Room Setpoint. When zero, Thermostat runs normal program.
 	local curROVR, tstamp  = luup.variable_get(otgWatchVar_t.ROVR.sid, otgWatchVar_t.ROVR.var, otgWatchVar_t.ROVR.dev)
 	curROVR = tonumber(curROVR) or -1
@@ -676,7 +716,7 @@ function otgCheckHouseMode()
 	end
 end
 
--- Register with ALTUI if installed
+-- Register with ALTUI if installed (global function)
 function otgRegisterWithAltUI()
 	-- Register with ALTUI once it is ready
 	for k, v in pairs(luup.devices) do
@@ -729,7 +769,7 @@ function otgStartup(lul_device)
 
 	-- Generate children
 	local childList = varGet(otgPluginInit_t.CHD.var)
-	otg.MsgCreateChild_t = childList:split()
+	otg.MsgCreateChild_t = childList:otg_split()
 	otgCreateChildren(otg.MsgCreateChild_t)
 	
 	-- Register with ALTUI for proper drawing, we use build-in drawZoneThermostat (or drawHeater)
@@ -761,7 +801,7 @@ function otgStartup(lul_device)
 	otg.LogDebug = tonumber(varGet(otgPluginInit_t.DBG.var))
 
 	-- Check if connected via IP
-	local ip = luup.devices[otg.Device].ip
+	local ip = luup.attr_get("ip",otg.Device)
 	if (ip ~= "") then
 		local ipaddr, port = string.match(ip, "(.-):(.*)")
 		debug("IP = " .. ipaddr .. ", port = " .. port)
@@ -785,7 +825,7 @@ function otgStartup(lul_device)
 	for key, tab in pairs(otgWatchVar_t) do
 		local devices = varGet(tab.src)
 		if (devices ~= "") then
-			tab.dev = devices:split()
+			tab.dev = devices:otg_split()
 			for i, val in pairs(tab.dev) do
 				debug("Registering variable " .. tab.var .. " from device " .. i)
 				luup.variable_watch("otgGenericCallback", tab.sid, tab.var, i)
@@ -829,7 +869,7 @@ function otgStartup(lul_device)
 	return true
 end
 
--- otgIncoming
+-- otgIncoming (global function)
 function otgIncoming(data)
     if (luup.is_ready(lul_device) == false or otg.Disabled == true) then
         return
@@ -1010,40 +1050,7 @@ function otgIncoming(data)
    return true
 end
 
---- HANDLERS ---
-
---function otgConfig_t.VER.handler(cmd, version)
-function otgConfig_t_VER_handler(cmd, version)
-   debug("otgHandleVersion cmd = " .. cmd .. ", version = " .. version)
-   -- Determine firmware version as this has an effect on commands and reponses
-   if (version ~= nil) then
-      local major = tonumber(string.match(version, "(%d+)\."))
-      -- Update the command table if needed
-      if (major ~= nil) then
-         otg.MajorVersion = major
-         if (otgVersionConfig_t[major] ~= nil) then
-            local key, elem, x, y
-            for key, elem in pairs(otgVersionConfig_t[major]) do
-               if (otgConfig_t[key] == nil) then
-                  otgConfig_t[key] = {} -- new command
-               end
-               for x, y in pairs(elem) do
-                  otgConfig_t[key][x] = y
-               end
-            end
-         end
-      end
-   end
-   -- Send report commands to Gateway to receive settings
-   for i, elem in ipairs(otg.Startup_t) do
-      if (otgConfig_t[elem] ~= nil) then
-         otgWriteCommand("PR=" .. otgConfig_t[elem].rep, elem) -- get OTG value
-      end
-   end
-end
-
---- TIMERS ---
-
+--- TIMERS --- (global function)
 function otgClockTimer(dummy)
    local now = os.time()
    if (otg.LastResponse > 0 and (now - otg.LastResponse > 60)) then
@@ -1062,7 +1069,7 @@ end
 
 --- ACTION FUNCTIONS ---
 
--- otgSetCurrentSetpoint
+-- otgSetCurrentSetpoint (global function)
 function otgSetCurrentSetpoint(NewCurrentSetpoint)
    debug("otgSetCurrentSetpoint " .. (NewCurrentSetpoint or "")..", constant "..(Constant and "true" or "false"))
    if (otg.GatewayMode == true) then
@@ -1080,7 +1087,7 @@ function otgSetCurrentSetpoint(NewCurrentSetpoint)
    end
 end
 
--- otgSetModeTarget
+-- otgSetModeTarget (global function)
 function otgSetModeTarget(NewModeTarget)
    debug("otgSetModeTarget " .. (NewModeTarget or ""))
    if (otg.GatewayMode == true) then
@@ -1097,7 +1104,7 @@ function otgSetModeTarget(NewModeTarget)
    end
 end
 
--- otgUpdateEcoState
+-- otgUpdateEcoState (global function)
 function otgUpdateEcoState(item, onOff)
    local ecoState = varGet(otgPluginInit_t.ECO.var)
    if (onOff == "on") then
@@ -1113,7 +1120,7 @@ end
 
 local otgOpenTime = 0
 -- otgEvalCondition
-function otgEvalCondition(check)
+local function otgEvalCondition(check)
 	local result = false
 	local delay = 0
 	-- For UI7 we do not use the security panel but build in house mode, so val will be empty
@@ -1133,7 +1140,7 @@ function otgEvalCondition(check)
 			local panelState = varGet("DetailedArmMode", tonumber(val),otg.PARTITION_SID)
 			result = (panelState == "Armed" or panelState == "ArmedInstant")
 		elseif (check.cond == "OPEN") then
-			local device_t = val:split()
+			local device_t = val:otg_split()
 			local i, elem
 			for i, elem in pairs (device_t) do
 				local deviceState = luup.variable_get(otg.DOOR_SENS_SID, "Tripped", i)
@@ -1163,7 +1170,7 @@ function otgEvalCondition(check)
 end
 
 local delayedMeasure_t
--- otgApplyEcoMeasures
+-- otgApplyEcoMeasures (global function)
 function otgApplyEcoMeasures(measure_t, forceOff)
 	if (type(measure_t) == "string") then
 		measure_t = delayedMeasure_t
@@ -1230,7 +1237,7 @@ function otgApplyEcoMeasures(measure_t, forceOff)
 	return apply
 end
 
--- otgSetEnergyModeTarget
+-- otgSetEnergyModeTarget (global function)
 function otgSetEnergyModeTarget(NewModeTarget)
    debug("otgSetEnergyModeTarget " .. (NewModeTarget or ""))
    if (otg.GatewayMode == true) then
@@ -1244,7 +1251,7 @@ function otgSetEnergyModeTarget(NewModeTarget)
    end
 end
 
--- otgGenericCallback: Generic callback function used to watch variables changing status
+-- otgGenericCallback: Generic callback function used to watch variables changing status (global function)
 function otgGenericCallback(lul_device, lul_service, lul_variable, lul_value_old, lul_value_new)
    debug("otgGenericCallback device " .. (lul_device or "") .. ", new value = " .. (lul_value_new or ""))
    if (otgWatchVar_t.TEMP.dev ~= nil and otgWatchVar_t.TEMP.dev[lul_device]) then
@@ -1262,7 +1269,7 @@ function otgGenericCallback(lul_device, lul_service, lul_variable, lul_value_old
    end
 end
 
--- otgSetOutsideTemperature
+-- otgSetOutsideTemperature (global function)
 function otgSetOutsideTemperature(NewTemperature)
 	debug("otgSetOutsideTemperature " .. (NewTemperature or ""))
 	if (otg.GatewayMode == true) then
@@ -1273,7 +1280,7 @@ function otgSetOutsideTemperature(NewTemperature)
 	end
 end
 
--- otgSetRoomHumidity
+-- otgSetRoomHumidity (global function)
 function otgSetRoomHumidity(NewLevel)
 	debug("otgSetRoomHumidity " .. (NewLevel or ""))
 	if (otg.GatewayMode == true) then
@@ -1284,13 +1291,13 @@ function otgSetRoomHumidity(NewLevel)
 	end
 end
 
--- otgSendCommand
+-- otgSendCommand (global function)
 function otgSendCommand(Command)
 	debug("otgSendCommand " .. (Command or ""))
 	return otgWriteCommand(Command, true) -- no checking on input
 end
 
--- otgSetDomesticHotWater
+-- otgSetDomesticHotWater (global function)
 function otgSetDomesticHotWater(NewMode)
 	debug("otgSetDomesticHotWater " .. (NewMode or ""))
 	local dmw_t = { Automatic = "A", Disable = "0", Enable = "1" }
@@ -1303,7 +1310,7 @@ function otgSetDomesticHotWater(NewMode)
 	end
 end
 
--- otgSetClock
+-- otgSetClock (global function)
 function otgSetClock(timer)
    debug("otgSetClock")
    timer = timer or false
@@ -1330,7 +1337,7 @@ function otgSetClock(timer)
    end
 end
 
--- otgResetErrorCount: 0 resets all errors
+-- otgResetErrorCount: 0 resets all errors (global function)
 function otgResetErrorCount(Index)
    debug("otgResetErrorCount " .. Index)
    local nr = tonumber(Index)
@@ -1349,6 +1356,7 @@ function otgResetErrorCount(Index)
    end
 end
 
+--[[
 -- table2Json: converts a lua table to json format
 function table2Json(o)
    if (type(o) == 'table') then
@@ -1366,6 +1374,7 @@ function table2Json(o)
       return '"' .. string.gsub(tostring(o), "%c", "") .. '"'
    end
 end
+]]
 
 -- dumpFile: dump a file to stdout
 function dumpFile(filename)
@@ -1380,7 +1389,7 @@ function dumpFile(filename)
    return str
 end
 
--- otgCallbackHandler(lul_request, lul_parameters, lul_outputformat)
+-- otgCallbackHandler(lul_request, lul_parameters, lul_outputformat) (global function)
 function otgCallbackHandler(lul_request, lul_parameters, lul_outputformat)
    debug("otgCallbackHandler: request " .. lul_request)
    if (lul_outputformat ~= "xml") then
