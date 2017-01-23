@@ -3,7 +3,7 @@ Opentherm Gateway for Vera controller
 
 Vera plugin to control the OpenTherm Gateway (see http://otgw.tclcode.com/).
 
-Currently version 1.6 is the latest version available.
+Currently version 1.11 is the latest version available.
 
 Description of the plugin and features can be found on the http://code.mios.com/trac/mios_opentherm-gateway (this has an older version).
 
