@@ -1,7 +1,7 @@
 //# sourceURL=J_OpenThermGateway_UI7.js
 // OpenTherm Gateway UI for UI7
 // Written by nlrb, modified for UI7 and ALTUI by Rene Boer. 
-// V1.10 17 November 2018
+// V1.14 17 November 2018
 var OpenThermGateway = (function (api) {
 	var _DIV_PREFIX = "otgJS_";		// Used in HTML div IDs to make them unique for this module
 	var _MOD_PREFIX = "OpenThermGateway";  // Must match module name above
@@ -331,8 +331,8 @@ var OpenThermGateway = (function (api) {
 			varSet(deviceID,'PluginDoorWindowOutside',htmlGetPulldownSelection(deviceID, 'PluginDoorWindowOutside'));
 		}	
 		application.sendCommandSaveUserData(true);
-		doReload(deviceID);
 		setTimeout(function() {
+			doReload(deviceID);
 			showBusy(false);
 			try {
 				api.ui.showMessagePopup("Settings updated, Vera restarting.",0);
@@ -397,8 +397,8 @@ var OpenThermGateway = (function (api) {
 			}
 		});
 		application.sendCommandSaveUserData(true);
-		doReload(deviceID);
 		setTimeout(function() {
+			doReload(deviceID);
 			showBusy(false);
 			try {
 				api.ui.showMessagePopup("Settings updated, Vera restarting.",0);
