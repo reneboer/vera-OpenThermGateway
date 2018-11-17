@@ -3,8 +3,15 @@
 
 	Written by nlrb, modified for UI7 and ALTUI by Rene Boer
 	
-	V1.11 23 January 2017
+	V1.13 27 December 2017
 	
+	V1.13 Changes:
+			Fixed House Mode Vacation eco mode monitoring.
+			
+	V1.12 Changes:
+			Fixed incorrect watch settings on variables. Caused many watch triggers and maybe instability.
+			Updated for new ALTUI plugin registration API.
+
 	V1.11 Changes:
 			Renamed string:split function to to string:otg_split as it caused issues on openLuup. It seems all code share the same name space.
 			Set functions to local as much as possible to avoid similar issues on other named functions.
@@ -75,7 +82,7 @@ function Queue.len(list)
 end
  
 local otg = {  -- Plugin data
-	PLUGIN_VERSION = "1.10",
+	PLUGIN_VERSION = "1.12",
 	Description = "OpenThermGateway",
 	--- SERVICES ---
 	GATEWAY_SID    = "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
@@ -689,17 +696,19 @@ end
 -- Check the current House Mode (UI7 only) to make sure Eco measures stay active in Vacation mode (global function)
 function otgCheckHouseMode() 
 	-- Get curent Remote Override Room Setpoint. When zero, Thermostat runs normal program.
-	local curROVR, tstamp  = luup.variable_get(otgWatchVar_t.ROVR.sid, otgWatchVar_t.ROVR.var, otgWatchVar_t.ROVR.dev)
+	local curROVR, tstamp  = luup.variable_get(otgWatchVar_t.ROVR.sid, otgWatchVar_t.ROVR.var, otgWatchVar_t.ROVR.dev[otg.Device])
 	curROVR = tonumber(curROVR) or -1
 	debug("otgCheckHouseMode " .. curROVR)
 	if (curROVR == 0) then
 		local now = os.time() - 60
 		if (tstamp > now) then 
-			-- Wait a bit if it was changed less then a minute ago, else thermostat may not respond to restoreing it properly.
+			-- Wait a bit if it was changed less then a minute ago, else thermostat may not respond to restoring it properly.
 			luup.call_delay("otgCheckHouseMode", 65, "") 
+			debug("otgCheckHouseMode re-run in one minute.")
 		else
 			-- See if House mode is Vacation
 			local house_mode = tonumber((luup.attr_get("Mode",0)))
+			debug("otgCheckHouseMode House mode is "..house_mode)
 			if (house_mode == 4) then
 				local ecoState = varGet(otgPluginInit_t.ECO.var)
 				-- Check for default ECO mode being active
@@ -731,6 +740,7 @@ function otgRegisterWithAltUI()
 				arguments["newStyleFunc"] = ""	
 				arguments["newDeviceIconFunc"] = ""	
 				arguments["newControlPanelFunc"] = ""	
+				arguments["newFavoriteFunc"] = ""	
 
 				-- Main device
 				luup.call_action(otg.ALTUI_SID, "RegisterPlugin", arguments, k)
@@ -823,17 +833,20 @@ function otgStartup(lul_device)
    
 	-- Register variables to watch
 	for key, tab in pairs(otgWatchVar_t) do
-		local devices = varGet(tab.src)
-		if (devices ~= "") then
-			tab.dev = devices:otg_split()
-			for i, val in pairs(tab.dev) do
-				debug("Registering variable " .. tab.var .. " from device " .. i)
-				luup.variable_watch("otgGenericCallback", tab.sid, tab.var, i)
+		if (tab.src ~= "") then
+			local devices = varGet(tab.src)
+			if (devices ~= "") then
+				tab.dev = devices:otg_split()
+				for i, val in pairs(tab.dev) do
+					debug("Registering variable " .. tab.var .. " from device " .. i)
+					luup.variable_watch("otgGenericCallback", tab.sid, tab.var, i)
+				end
 			end
 		else	 
 			-- V1.7 add watches support on own device
 			tab.dev = {} 
 			tab.dev[otg.Device] = otg.Device
+			debug("Registering variable " .. tab.var .. " from device " .. otg.Device)
 			luup.variable_watch("otgGenericCallback", tab.sid, tab.var, otg.Device)
 		end
 	end
@@ -1239,34 +1252,34 @@ end
 
 -- otgSetEnergyModeTarget (global function)
 function otgSetEnergyModeTarget(NewModeTarget)
-   debug("otgSetEnergyModeTarget " .. (NewModeTarget or ""))
-   if (otg.GatewayMode == true) then
-      if (NewModeTarget == "EnergySavingsMode" or NewModeTarget == "Normal") then
-         otgApplyEcoMeasures(otg.EcoMeasure_t, (NewModeTarget == "Normal"))
-      else
-         debug("NewModeTarget " .. NewModeTarget ..  " not supported")
-      end
-   else
-      otgMessage("SetEnergyModeTarget only possible in Gateway mode", 2)
-   end
+	debug("otgSetEnergyModeTarget " .. (NewModeTarget or ""))
+	if (otg.GatewayMode == true) then
+		if (NewModeTarget == "EnergySavingsMode" or NewModeTarget == "Normal") then
+			otgApplyEcoMeasures(otg.EcoMeasure_t, (NewModeTarget == "Normal"))
+		else
+			debug("NewModeTarget " .. NewModeTarget ..  " not supported")
+		end
+	else
+		otgMessage("SetEnergyModeTarget only possible in Gateway mode", 2)
+	end
 end
 
 -- otgGenericCallback: Generic callback function used to watch variables changing status (global function)
 function otgGenericCallback(lul_device, lul_service, lul_variable, lul_value_old, lul_value_new)
-   debug("otgGenericCallback device " .. (lul_device or "") .. ", new value = " .. (lul_value_new or ""))
-   if (otgWatchVar_t.TEMP.dev ~= nil and otgWatchVar_t.TEMP.dev[lul_device]) then
-      otgSetOutsideTemperature(lul_value_new)
-   elseif (otgWatchVar_t.HUMY.dev ~= nil and otgWatchVar_t.HUMY.dev[lul_device] ~= nil) then
-      otgSetRoomHumidity(lul_value_new)
-   elseif (otgWatchVar_t.ROVR.dev ~= nil and otgWatchVar_t.ROVR.dev[lul_device] ~= nil) then  -- V1.7
-      otgCheckHouseMode()
-   else
-      if (otgWatchVar_t.PART.dev[lul_device] ~= nil and lul_variable == otgWatchVar_t.PART.var) then
-         otgApplyEcoMeasures({ PART_DHW = otg.EcoMeasure_t.PART_DHW, PART_TMP = otg.EcoMeasure_t.PART_TMP })
-      elseif (otgWatchVar_t.DOOR.dev[lul_device] ~= nil and lul_variable == otgWatchVar_t.DOOR.var) then
-         otgApplyEcoMeasures({ DOOR_TMP = otg.EcoMeasure_t.DOOR_TMP })
-      end
-   end
+	debug("otgGenericCallback device " .. (lul_device or "") .. ", new value = " .. (lul_value_new or ""))
+	if (otgWatchVar_t.TEMP.dev ~= nil and otgWatchVar_t.TEMP.dev[lul_device]) then
+		otgSetOutsideTemperature(lul_value_new)
+	elseif (otgWatchVar_t.HUMY.dev ~= nil and otgWatchVar_t.HUMY.dev[lul_device] ~= nil) then
+		otgSetRoomHumidity(lul_value_new)
+	elseif (otgWatchVar_t.ROVR.dev ~= nil and otgWatchVar_t.ROVR.dev[lul_device] ~= nil) then  -- V1.7
+		otgCheckHouseMode()
+	else
+		if (otgWatchVar_t.PART.dev[lul_device] ~= nil and lul_variable == otgWatchVar_t.PART.var) then
+			otgApplyEcoMeasures({ PART_DHW = otg.EcoMeasure_t.PART_DHW, PART_TMP = otg.EcoMeasure_t.PART_TMP })
+		elseif (otgWatchVar_t.DOOR.dev[lul_device] ~= nil and lul_variable == otgWatchVar_t.DOOR.var) then
+			otgApplyEcoMeasures({ DOOR_TMP = otg.EcoMeasure_t.DOOR_TMP })
+		end
+	end
 end
 
 -- otgSetOutsideTemperature (global function)
