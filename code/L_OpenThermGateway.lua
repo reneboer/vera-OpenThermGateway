@@ -3,8 +3,11 @@
 
 	Written by nlrb, modified for UI7 and ALTUI by Rene Boer
 	
-	V1.13 27 December 2017
+	V1.15 7 May 2019
 	
+	V1.15 Changes:
+			Check on watched devices to be still existing. When obsolete plugin can response to any device changes.
+			
 	V1.13 Changes:
 			Fixed House Mode Vacation eco mode monitoring.
 			
@@ -838,8 +841,13 @@ function otgStartup(lul_device)
 			if (devices ~= "") then
 				tab.dev = devices:otg_split()
 				for i, val in pairs(tab.dev) do
-					debug("Registering variable " .. tab.var .. " from device " .. i)
-					luup.variable_watch("otgGenericCallback", tab.sid, tab.var, i)
+					-- V1.15 Check device still exists to avoid responding to any device changing the variable
+					if luup.devices[i] then
+						debug("Registering variable " .. tab.var .. " from device " .. i)
+						luup.variable_watch("otgGenericCallback", tab.sid, tab.var, i)
+					else
+						debug("Device "..i.." no longer exists, no registration for "..tab.var)
+					end
 				end
 			end
 		else	 
@@ -1274,9 +1282,9 @@ function otgGenericCallback(lul_device, lul_service, lul_variable, lul_value_old
 	elseif (otgWatchVar_t.ROVR.dev ~= nil and otgWatchVar_t.ROVR.dev[lul_device] ~= nil) then  -- V1.7
 		otgCheckHouseMode()
 	else
-		if (otgWatchVar_t.PART.dev[lul_device] ~= nil and lul_variable == otgWatchVar_t.PART.var) then
+		if (otgWatchVar_t.PART.dev ~= nil and otgWatchVar_t.PART.dev[lul_device] ~= nil and lul_variable == otgWatchVar_t.PART.var) then
 			otgApplyEcoMeasures({ PART_DHW = otg.EcoMeasure_t.PART_DHW, PART_TMP = otg.EcoMeasure_t.PART_TMP })
-		elseif (otgWatchVar_t.DOOR.dev[lul_device] ~= nil and lul_variable == otgWatchVar_t.DOOR.var) then
+		elseif (otgWatchVar_t.DOOR.dev ~= nil and otgWatchVar_t.DOOR.dev[lul_device] ~= nil and lul_variable == otgWatchVar_t.DOOR.var) then
 			otgApplyEcoMeasures({ DOOR_TMP = otg.EcoMeasure_t.DOOR_TMP })
 		end
 	end
