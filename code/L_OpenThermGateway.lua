@@ -3,7 +3,10 @@
 
 	Written by nlrb, modified for UI7 and ALTUI by Rene Boer
 	
-	V1.15 7 May 2019
+	V1.16 30 October 2019
+	
+	V1.16 Changes:
+			CustomModeConfiguration has been corrected in 7.30, adapting for change
 	
 	V1.15 Changes:
 			Check on watched devices to be still existing. When obsolete plugin can response to any device changes.
@@ -85,7 +88,7 @@ function Queue.len(list)
 end
  
 local otg = {  -- Plugin data
-	PLUGIN_VERSION = "1.15",
+	PLUGIN_VERSION = "1.16",
 	Description = "OpenThermGateway",
 	--- SERVICES ---
 	GATEWAY_SID    = "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
@@ -329,45 +332,45 @@ local otgWatchVar_t = {
 -- OpenTherm messages
 local otgMessage_t = {
    [ 0] = { dir = "R-", txt = "Status", val = "flag8", flags = otg.StatusFlag_t },
-   [ 1] = { dir = "-W", txt = "Control setpoint (째C)", val = "f8.8", var = "ControlSetpoint", child = "TEMP" },
+   [ 1] = { dir = "-W", txt = "Control setpoint (캜)", val = "f8.8", var = "ControlSetpoint", child = "TEMP" },
    [ 2] = { dir = "-W", txt = "Master configuration", val = { hb = "flag8", lb = "u8" }, flags = otg.MasterConfigFlag_t, var = { lb = "MasterMemberId" } },
    [ 3] = { dir = "R-", txt = "Slave configuration", val = { hb = "flag8", lb = "u8" }, flags = otg.SlaveConfigFlag_t, var = { lb = "SlaveMemberId" } },
    [ 4] = { dir = "-W", txt = "Remote command", val = "u8", var = "RemoteCommand" },
    [ 5] = { dir = "R-", txt = "Fault flags & OEM fault code", val = { hb = "flag8", lb = "u8" }, var = { lb = "FaultCode" }, flags = otg.FaultFlag_t },
    [ 6] = { dir = "R-", txt = "Remote parameter flags", val = "flag8", flags = otg.RemoteFlag_t },
    [ 7] = { dir = "-W", txt = "Cooling control signal (%)", val = "f8.8", var = "CoolingControlSignal" },
-   [ 8] = { dir = "-W", txt = "Control setpoint central heating 2 (째C)", val = "f8.8", var = "CH2ControlSetpoint", child = "TEMP" },
-   [ 9] = { dir = "R-", txt = "Remote override room setpoint (째C)", val = "f8.8", var ="RemoteOverrideRoomSetpoint", child = "TEMP" },
+   [ 8] = { dir = "-W", txt = "Control setpoint central heating 2 (캜)", val = "f8.8", var = "CH2ControlSetpoint", child = "TEMP" },
+   [ 9] = { dir = "R-", txt = "Remote override room setpoint (캜)", val = "f8.8", var ="RemoteOverrideRoomSetpoint", child = "TEMP" },
    [10] = { dir = "R-", txt = "Number of transparent slave parameters (TSP) supported by slave", val = "u8", var = { hb = "TSPNumber" } },
    [11] = { dir = "RW", txt = "Index number/value of referred-to transparent slave parameter (TSP)", val = "u8", var = { hb = "TSPIndex", lb = "TSPValue" } },
    [12] = { dir = "R-", txt = "Size of fault history buffer (FHB) supported by slave", val = "u8", var = { hb = "FHBSize" } },
    [13] = { dir = "R-", txt = "Index number/value of referred-to fault history buffer (FHB) entry", val = "u8", var = { hb = "FHBIndex", lb = "FHBValue" } },
    [14] = { dir = "-W", txt = "Max. relative modulation level (%)", val = "f8.8", var = "MaxRelativeModulationLevel" },
    [15] = { dir = "R-", txt = "Max. boiler capacity (kW) and modulation level setting (%)", val = "u8", var = { hb = "MaxBoilerCapacity", lb = "MinModulationLevel" } },
-   [16] = { dir = "-W", txt = "Room setpoint (째C)", val = "f8.8", sid = otg.TEMP_SETP_SID, var = "CurrentSetpoint", child = "TEMP" },
+   [16] = { dir = "-W", txt = "Room setpoint (캜)", val = "f8.8", sid = otg.TEMP_SETP_SID, var = "CurrentSetpoint", child = "TEMP" },
    [17] = { dir = "R-", txt = "Relative modulation level (%)", val = "f8.8", var = "RelativeModulationLevel", child = "GEN" },
    [18] = { dir = "R-", txt = "Central heating water pressure (bar)", val = "f8.8", var = "CHWaterPressure", child = "GEN" },
    [19] = { dir = "R-", txt = "Domestic hot water flow rate (litres/minute)", val = "f8.8", var = "DHWFlowRate", child = "GEN" },
    [20] = { dir = "RW", txt = "Day of week & time of day", var = "DayTime" },
    [21] = { dir = "RW", txt = "Date", val = "u8", var = "Date" },
    [22] = { dir = "RW", txt = "Year", val = "u16", var = "Year" },
-   [23] = { dir = "-W", txt = "Room setpoint central heating 2 (째C)", val = "f8.8", var = "CH2CurrentSetpoint", child = "TEMP" },
-   [24] = { dir = "-W", txt = "Room temperature (째C)", val = "f8.8", sid = otg.TEMP_SENS_SID, var = "CurrentTemperature", child = "TEMP" },
-   [25] = { dir = "R-", txt = "Boiler water temperature (째C)", val = "f8.8", var = "BoilerWaterTemperature", child = "TEMP" },
-   [26] = { dir = "R-", txt = "Domestic hot water temperature (째C)", val = "f8.8", var = "DHWTemperature", child = "TEMP" },
-   [27] = { dir = "R-", txt = "Outside temperature (째C)", val = "f8.8", var = "OutsideTemperature", child = "TEMP" },
-   [28] = { dir = "R-", txt = "Return water temperature (째C)", val = "f8.8", var = "ReturnWaterTemperature", child = "TEMP" },
-   [29] = { dir = "R-", txt = "Solar storage temperature (째C)", val = "f8.8", var = "SolarStorageTemperature", child = "TEMP" },
-   [30] = { dir = "R-", txt = "Solar collector temperature (째C)", val = "f8.8", var = "SolarCollectorTemperature", child = "TEMP" },
-   [31] = { dir = "R-", txt = "Flow temperature central heating 2 (째C)", val = "f8.8", var = "CH2FlowTemperature", child = "TEMP" },
-   [32] = { dir = "R-", txt = "Domestic hot water 2 temperature (째C)", val = "f8.8", var = "DHW2Temperature", child = "TEMP" },
-   [33] = { dir = "R-", txt = "Boiler exhaust temperature (째C)", val = "s16", var = "BoilerExhaustTemperature", child = "TEMP" },
-   [48] = { dir = "R-", txt = "Domestic hot water setpoint boundaries (째C)", val = "s8", var = "DHWBounadries" },
-   [49] = { dir = "R-", txt = "Max. central heating setpoint boundaries (째C)", val = "s8", var = "CHBoundaries" },
+   [23] = { dir = "-W", txt = "Room setpoint central heating 2 (캜)", val = "f8.8", var = "CH2CurrentSetpoint", child = "TEMP" },
+   [24] = { dir = "-W", txt = "Room temperature (캜)", val = "f8.8", sid = otg.TEMP_SENS_SID, var = "CurrentTemperature", child = "TEMP" },
+   [25] = { dir = "R-", txt = "Boiler water temperature (캜)", val = "f8.8", var = "BoilerWaterTemperature", child = "TEMP" },
+   [26] = { dir = "R-", txt = "Domestic hot water temperature (캜)", val = "f8.8", var = "DHWTemperature", child = "TEMP" },
+   [27] = { dir = "R-", txt = "Outside temperature (캜)", val = "f8.8", var = "OutsideTemperature", child = "TEMP" },
+   [28] = { dir = "R-", txt = "Return water temperature (캜)", val = "f8.8", var = "ReturnWaterTemperature", child = "TEMP" },
+   [29] = { dir = "R-", txt = "Solar storage temperature (캜)", val = "f8.8", var = "SolarStorageTemperature", child = "TEMP" },
+   [30] = { dir = "R-", txt = "Solar collector temperature (캜)", val = "f8.8", var = "SolarCollectorTemperature", child = "TEMP" },
+   [31] = { dir = "R-", txt = "Flow temperature central heating 2 (캜)", val = "f8.8", var = "CH2FlowTemperature", child = "TEMP" },
+   [32] = { dir = "R-", txt = "Domestic hot water 2 temperature (캜)", val = "f8.8", var = "DHW2Temperature", child = "TEMP" },
+   [33] = { dir = "R-", txt = "Boiler exhaust temperature (캜)", val = "s16", var = "BoilerExhaustTemperature", child = "TEMP" },
+   [48] = { dir = "R-", txt = "Domestic hot water setpoint boundaries (캜)", val = "s8", var = "DHWBounadries" },
+   [49] = { dir = "R-", txt = "Max. central heating setpoint boundaries (캜)", val = "s8", var = "CHBoundaries" },
    [50] = { dir = "R-", txt = "OTC heat curve ratio upper & lower bounds", val = "s8", var = "OTCBoundaries" },
-   [56] = { dir = "RW", txt = "Domestic hot water setpoint (째C)", val = "f8.8", var = "DHWSetpoint", child = "TEMP" },
-   [57] = { dir = "RW", txt = "Max. central heating water setpoint (째C)", val = "f8.8", var = "MaxCHWaterSetpoint", child = "TEMP" },
-   [58] = { dir = "RW", txt = "OTC heat curve ratio (째C)", val = "f8.8", var = "OTCHeatCurveRatio" },
+   [56] = { dir = "RW", txt = "Domestic hot water setpoint (캜)", val = "f8.8", var = "DHWSetpoint", child = "TEMP" },
+   [57] = { dir = "RW", txt = "Max. central heating water setpoint (캜)", val = "f8.8", var = "MaxCHWaterSetpoint", child = "TEMP" },
+   [58] = { dir = "RW", txt = "OTC heat curve ratio (캜)", val = "f8.8", var = "OTCHeatCurveRatio" },
    -- OpenTherm 2.3 IDs (70-91) for ventilation/heat-recovery applications
    [70] = { dir = "R-", txt = "Status ventilation/heat-recovery", val = "flag8", var = "VHStatus" },
    [71] = { dir = "-W", txt = "Control setpoint ventilation/heat-recovery", val = "u8", var = { hb = "VHControlSetpoint" } },
@@ -379,10 +382,10 @@ local otgMessage_t = {
    [77] = { dir = "R-", txt = "Relative ventilation", val = "u8", var = { hb = "RelativeVentilation" }, child = "GEN" },
    [78] = { dir = "RW", txt = "Relative humidity (%)", val = "u8", var = { hb = "RelativeHumidity" }, child = "GEN" },
    [79] = { dir = "RW", txt = "CO2 level", val = "u16", var = "CO2Level", child = "GEN" },
-   [80] = { dir = "R-", txt = "Supply inlet temperature (째C)", val = "f8.8", var = "SupplyInletTemperature", child = "TEMP" },
-   [81] = { dir = "R-", txt = "Supply outlet temperature (째C)", val = "f8.8", var = "SupplyOutletTemperature", child = "TEMP" },
-   [82] = { dir = "R-", txt = "Exhaust inlet temperature (째C)", val = "f8.8", var = "ExhaustInletTemperature", child = "TEMP" },
-   [83] = { dir = "R-", txt = "Exhaust outlet temperature (째C)", val = "f8.8", var = "ExhaustOutletTemperature", child = "TEMP" },
+   [80] = { dir = "R-", txt = "Supply inlet temperature (캜)", val = "f8.8", var = "SupplyInletTemperature", child = "TEMP" },
+   [81] = { dir = "R-", txt = "Supply outlet temperature (캜)", val = "f8.8", var = "SupplyOutletTemperature", child = "TEMP" },
+   [82] = { dir = "R-", txt = "Exhaust inlet temperature (캜)", val = "f8.8", var = "ExhaustInletTemperature", child = "TEMP" },
+   [83] = { dir = "R-", txt = "Exhaust outlet temperature (캜)", val = "f8.8", var = "ExhaustOutletTemperature", child = "TEMP" },
    [84] = { dir = "R-", txt = "Actual exhaust fan speed", val = "u16", var = "ExhaustFanSpeed" },
    [85] = { dir = "R-", txt = "Actual inlet fan speed", val = "u16", var = "InletFanSpeed" },
    [86] = { dir = "R-", txt = "Remote parameter settings ventilation/heat-recovery", val = "flag8", var = "VHRemoteParameter" },
@@ -768,6 +771,13 @@ function otgStartup(lul_device)
 		local sid = tab.sid or otg.GATEWAY_SID
 		local init = tab.init or ""
 		local reset = tab.reset or false
+		if luup.short_version then
+			-- luup.short_version is new in UI7.30 and up so is good check
+			-- 7.30 and up have lable and command as documented in wiki
+			if tab.var == "CustomModeConfiguration" then
+				tab.init = "CMDNormal;Normal;"..otg.HVAC_USER_SID.."/SetEnergyModeTarget/NewModeTarget=Normal|CMDEco;Eco;"..otg.HVAC_USER_SID.."/SetEnergyModeTarget/NewModeTarget=EnergySavingsMode"
+			end
+		end
 		updateIfNeeded(sid, tab.var, init, otg.Device, not(reset))
 	end
 
