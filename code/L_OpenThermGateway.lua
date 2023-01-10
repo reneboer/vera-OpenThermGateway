@@ -1062,7 +1062,7 @@ function otgIncoming(data)
 			if (msg == 16 or msg == 9) then  --V1.18 On CurrentSetpoint or Remote Override room setpoint, also update SetPointTarget.
 				updateIfNeeded(otg.TEMP_SENS_SID, "SetPointTarget", val2, otg.Device) -- use lower accuracy for non-gateway variables
 				if (msg == 16) then  --V1.18 On CurrentSetpoint, also update Temp1 CurrentSetpoint.
-					updateIfNeeded(otg.TEMP_SENS_SID, "CurrenSetpoint", val2, otg.Device) -- use lower accuracy for non-gateway variables
+					updateIfNeeded(otg.TEMP_SENS_SID, "CurrentSetpoint", val2, otg.Device) -- use lower accuracy for non-gateway variables
 				end
 			end
             sid = otg.GATEWAY_SID -- set high accuray value in gateway variable as well
