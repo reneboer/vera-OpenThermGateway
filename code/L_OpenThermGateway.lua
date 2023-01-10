@@ -3,8 +3,11 @@
 
 	Written by nlrb, modified for UI7 and ALTUI by Rene Boer
 	
-	V1.17	10 January 2023
+	V1.18	12 January 2023
 	
+	V1.18 Changes:
+			Added urn:upnp-org:serviceId:TemperatureSensor1 CurrentSetpoint and SetpointTarget for better compatibility.
+
 	V1.17 Changes:
 			Added commands map for firmware 5 & 6
 			Updated ref voltage map to show PIC16F1847 values as well.
@@ -95,7 +98,7 @@ function Queue.len(list)
 end
  
 local otg = {  -- Plugin data
-	PLUGIN_VERSION = "1.17",
+	PLUGIN_VERSION = "1.18",
 	Description = "OpenThermGateway",
 	--- SERVICES ---
 	GATEWAY_SID    = "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
@@ -1056,6 +1059,12 @@ function otgIncoming(data)
          if (msgVal == "f8.8" and sid ~= otg.GATEWAY_SID) then
             val2 = string.format("%.1f", tonumber(val))
             updateIfNeeded(sid, msgVar, val2, otg.Device) -- use lower accuracy for non-gateway variables
+			if (msg == 16 or msg == 9) then  --V1.18 On CurrentSetpoint or Remote Override room setpoint, also update SetPointTarget.
+				updateIfNeeded(otg.TEMP_SENS_SID, "SetPointTarget", val2, otg.Device) -- use lower accuracy for non-gateway variables
+				if (msg == 16) then  --V1.18 On CurrentSetpoint, also update Temp1 CurrentSetpoint.
+					updateIfNeeded(otg.TEMP_SENS_SID, "CurrenSetpoint", val2, otg.Device) -- use lower accuracy for non-gateway variables
+				end
+			end
             sid = otg.GATEWAY_SID -- set high accuray value in gateway variable as well
          end
          if (type(msgVar) == "table") then
@@ -1218,7 +1227,8 @@ function otgSetCurrentSetpoint(NewCurrentSetpoint)
          setpoint = current + setpoint
 		 if setpoint < otg.MinimalSetPoint then setpoint = otg.MinimalSetPoint end -- avoid temp set too low
       end
-      updateIfNeeded(otg.TEMP_SETP_SID, "CurrentSetpoint", setpoint, otg.Device)
+--      updateIfNeeded(otg.TEMP_SETP_SID, "CurrentSetpoint", setpoint, otg.Device)
+      updateIfNeeded(otg.TEMP_SETP_SID, "SetpointTarget", setpoint, otg.Device)
       return otgWriteCommand("TT="..setpoint) -- Temperature temporary
    else
       otgMessage("SetCurrentSetpoint only possible in Gateway mode", 2)
