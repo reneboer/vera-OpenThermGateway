@@ -3,8 +3,15 @@
 
 	Written by nlrb, modified for UI7 and ALTUI by Rene Boer
 	
-	V1.16 30 October 2019
+	V1.17	10 January 2023
 	
+	V1.17 Changes:
+			Added commands map for firmware 5 & 6
+			Updated ref voltage map to show PIC16F1847 values as well.
+			Fixed EOM Fault code display, and hardware settings for LEDs and GPIO for UI7 and ALTUI.
+			Fix for set clock command.
+			Added OpenTherm 2.3 messages for solar (not tested). Thanks to https://github.com/rvdbreemen
+			
 	V1.16 Changes:
 			CustomModeConfiguration has been corrected in 7.30, adapting for change
 	
@@ -88,7 +95,7 @@ function Queue.len(list)
 end
  
 local otg = {  -- Plugin data
-	PLUGIN_VERSION = "1.16",
+	PLUGIN_VERSION = "1.17",
 	Description = "OpenThermGateway",
 	--- SERVICES ---
 	GATEWAY_SID    = "urn:otgw-tclcode-com:serviceId:OpenThermGateway1",
@@ -184,7 +191,8 @@ local otg = {  -- Plugin data
 		[4] = { txt = "LED F"},
 		[5] = { txt = "Setback (low)"},
 		[6] = { txt = "Setback (high)"},
-		[7] = { txt = "Temperature sensor"}
+		[7] = { txt = "Temperature sensor"},
+		[8] = { txt = "Activate DHW blocking when pulled low (PIC16F1847 only)" }
 	},
 
 	-- OpenTherm Gateway signal transition checking
@@ -195,16 +203,16 @@ local otg = {  -- Plugin data
 
 	-- OpenTherm Gateway reference voltage
 	RefVoltage_t = {
-		[0] = { txt = "0.625V" },
-		[1] = { txt = "0.833V" },
-		[2] = { txt = "1.042V" },
-		[3] = { txt = "1.250V" },
-		[4] = { txt = "1.458V" },
-		[5] = { txt = "1.667V" },
-		[6] = { txt = "1.875V" },
-		[7] = { txt = "2.083V" },
-		[8] = { txt = "2.292V" },
-		[9] = { txt = "2.500V" },
+		[0] = { txt = "0.625V/0.832V" },
+		[1] = { txt = "0.833V/0.960V" },
+		[2] = { txt = "1.042V/1.088V" },
+		[3] = { txt = "1.250V/1.216V" },
+		[4] = { txt = "1.458V/1.344V" },
+		[5] = { txt = "1.667V/1.472V" },
+		[6] = { txt = "1.875V/1.600V" },
+		[7] = { txt = "2.083V/1.728V" },
+		[8] = { txt = "2.292V/1.856V" },
+		[9] = { txt = "2.500V/1.984V" },
 	},
 
 	-- OpenTherm Gateway domestic hot water setting
@@ -329,7 +337,7 @@ local otgWatchVar_t = {
    DOOR = { src = "PluginDoorWindowDevices", sid = otg.DOOR_SENS_SID, var = "Tripped", dev = nil }
 }
 
--- OpenTherm messages
+-- OpenTherm messages 
 local otgMessage_t = {
    [ 0] = { dir = "R-", txt = "Status", val = "flag8", flags = otg.StatusFlag_t },
    [ 1] = { dir = "-W", txt = "Control setpoint (°C)", val = "f8.8", var = "ControlSetpoint", child = "TEMP" },
@@ -365,18 +373,39 @@ local otgMessage_t = {
    [31] = { dir = "R-", txt = "Flow temperature central heating 2 (°C)", val = "f8.8", var = "CH2FlowTemperature", child = "TEMP" },
    [32] = { dir = "R-", txt = "Domestic hot water 2 temperature (°C)", val = "f8.8", var = "DHW2Temperature", child = "TEMP" },
    [33] = { dir = "R-", txt = "Boiler exhaust temperature (°C)", val = "s16", var = "BoilerExhaustTemperature", child = "TEMP" },
+   -- V1.17 start
+   [34] = { dir = "R-", txt = "Boiler heat exchanger temperature (°C)", val = "f8.8", var = "BoilerHeatExchangerTemperature", child = "TEMP" },
+   [35] = { dir = "R-", txt = "Boiler fan speed and setpoint (rpm)", val = { hb = "u8", lb = "u8" }, var = { lb = "BoilerFanSpeedStatus", lb = "BoilerFanSpeedTarget" } },
+   [36] = { dir = "R-", txt = "Electrical current through burner flame (uA)", val = "f8.8", var = "ElectricalCurrentBurnerFlame" },
+   [37] = { dir = "R-", txt = "Room temperature for 2nd CH circuit (°C)", val = "f8.8", var = "CH2RoomTemperature", child = "TEMP" },
+   [38] = { dir = "R-", txt = "Relative Humidity (%)", val = { hb = "u8", lb = "u8" }, var = { lb = "RelativeHumidity" }, child = "GEN" },
+   -- V1.17 end
    [48] = { dir = "R-", txt = "Domestic hot water setpoint boundaries (°C)", val = "s8", var = "DHWBounadries" },
    [49] = { dir = "R-", txt = "Max. central heating setpoint boundaries (°C)", val = "s8", var = "CHBoundaries" },
    [50] = { dir = "R-", txt = "OTC heat curve ratio upper & lower bounds", val = "s8", var = "OTCBoundaries" },
+   -- V1.17 start
+   [51] = { dir = "R-", txt = "Remote parameter 4 boundaries", val = "s8", var = "RemoteParameter4Boundaries" },
+   [52] = { dir = "R-", txt = "Remote parameter 5 boundaries", val = "s8", var = "RemoteParameter5Boundaries" },
+   [53] = { dir = "R-", txt = "Remote parameter 6 boundaries", val = "s8", var = "RemoteParameter6Boundaries" },
+   [54] = { dir = "R-", txt = "Remote parameter 7 boundaries", val = "s8", var = "RemoteParameter7Boundaries" },
+   [55] = { dir = "R-", txt = "Remote parameter 8 boundaries", val = "s8", var = "RemoteParameter8Boundaries" },
+   -- V1.17 end
    [56] = { dir = "RW", txt = "Domestic hot water setpoint (°C)", val = "f8.8", var = "DHWSetpoint", child = "TEMP" },
    [57] = { dir = "RW", txt = "Max. central heating water setpoint (°C)", val = "f8.8", var = "MaxCHWaterSetpoint", child = "TEMP" },
    [58] = { dir = "RW", txt = "OTC heat curve ratio (°C)", val = "f8.8", var = "OTCHeatCurveRatio" },
+   -- V1.17 start
+   [59] = { dir = "RW", txt = "Remote parameter 4", val = "f8.8", var = "RemoteParameter4" },
+   [60] = { dir = "RW", txt = "Remote parameter 5", val = "f8.8", var = "RemoteParameter5" },
+   [61] = { dir = "RW", txt = "Remote parameter 6", val = "f8.8", var = "RemoteParameter6" },
+   [62] = { dir = "RW", txt = "Remote parameter 7", val = "f8.8", var = "RemoteParameter7" },
+   [63] = { dir = "RW", txt = "Remote parameter 8", val = "f8.8", var = "RemoteParameter8" },
+   -- V1.17 end
    -- OpenTherm 2.3 IDs (70-91) for ventilation/heat-recovery applications
    [70] = { dir = "R-", txt = "Status ventilation/heat-recovery", val = "flag8", var = "VHStatus" },
    [71] = { dir = "-W", txt = "Control setpoint ventilation/heat-recovery", val = "u8", var = { hb = "VHControlSetpoint" } },
-   [72] = { dir = "R-", txt = "Fault flags/code ventilation/heat-recovery", val = { hb = "flag", lb = "u8" }, var = { lb = "VHFaultCode" } },
+   [72] = { dir = "R-", txt = "Fault flags/code ventilation/heat-recovery", val = { hb = "flag8", lb = "u8" }, var = { lb = "VHFaultCode" } },
    [73] = { dir = "R-", txt = "Diagnostic code ventilation/heat-recovery", val = "u16", var = "VHDiagnosticCode" },
-   [74] = { dir = "R-", txt = "Config/memberID ventilation/heat-recovery", val = { hb = "flag", lb = "u8" }, var = { lb = "VHMemberId" } },
+   [74] = { dir = "R-", txt = "Config/memberID ventilation/heat-recovery", val = { hb = "flag8", lb = "u8" }, var = { lb = "VHMemberId" } },
    [75] = { dir = "R-", txt = "OpenTherm version ventilation/heat-recovery", val = "f8.8", var = "VHOpenThermVersion" },
    [76] = { dir = "R-", txt = "Version & type ventilation/heat-recovery", val = "u8", var = { hb = "VHProductType", lb = "VHProductVersion" } },
    [77] = { dir = "R-", txt = "Relative ventilation", val = "u8", var = { hb = "RelativeVentilation" }, child = "GEN" },
@@ -394,8 +423,28 @@ local otgMessage_t = {
    [89] = { dir = "RW", txt = "TSP entry ventilation/heat-recovery", val = "u8", var = { hb = "VHTSPIndex", lb = "VHTSPValue" } },
    [90] = { dir = "R-", txt = "Fault buffer size ventilation/heat-recovery", val = "u8", var = { hb = "VHFHBSize" } },
    [91] = { dir = "R-", txt = "Fault buffer entry ventilation/heat-recovery", val = "u8", var = { hb = "VHFHBIndex", lb = "VHFHBValue" } },
+   -- V1.17 start
+   [98] = { dir = "R-", txt = "RF strength and battery level", val = "u8", var = { hb = "RFStrength", lb = "BatteryLevel" } },
+   [99] = { dir = "R-", txt = "Operating Mode HC1, HC2/ DHW", val = "u8", var = { hb = "OperatingModeHC1", lb = "OperatingModeHC2_DHW" } },
+   -- V1.17 end
    -- OpenTherm 2.2 IDs
    [100] = { dir = "R-", txt = "Remote override function", val = { hb = "flag8", lb = "u8" }, var = { hb = "RemoteOverrideFunction" } },
+   -- V1.17 start
+   [101] = { dir = "R-", txt = "Solar Storage Master mode", val = { hb = "flag8", lb = "flag8" }, var = { hb = "SolarStorageMasterMode", lb = "SolarStorageSlaveStatus" } },
+   [102] = { dir = "R-", txt = "Solar Storage Application-specific flags and OEM fault", val = { hb = "flag8", lb = "u8" }, var = { hb = "SolarStorageASFflags", lb = "SolarStorageOEMErrorCode" } },
+   [103] = { dir = "R-", txt = "Solar Storage Slave Config / Member ID", val = { hb = "flag8", lb = "u8" }, var = { hb = "SolarStorageSlaveConfig", lb = "SolarStorageSlaveMemberIDcode" } },
+   [104] = { dir = "R-", txt = "Solar Storage product version number and type", val = "u8", var = { hb = "SolarStorageProductVersion", lb = "SolarStorageProductType" } },
+   [105] = { dir = "R-", txt = "Solar Storage Number of Transparent-Slave-Parameters supported", val = "u8", var = "SolarStorageTSP" },
+   [106] = { dir = "R-", txt = "Solar Storage Index number / Value of referred-to transparent slave parameter", val = "u8", var = { hb = "SolarStorageTSPindex", lb = "SolarStorageTSPvalue" } },
+   [107] = { dir = "R-", txt = "Solar Storage Size of Fault-History-Buffer supported by slave", val = "u8", var = "SolarStorageFHBsize" },
+   [108] = { dir = "R-", txt = "Solar Storage Index number / Value of referred-to fault-history buffer entry", val = "u8", var = { hb = "SolarStorageFHBindex", lb = "SolarStorageFHBvalue" } },
+   [109] = { dir = "R-", txt = "Electricity producer starts", val = "u16", var = "ElectricityProducerStarts" },
+   [110] = { dir = "R-", txt = "Electricity producer hours", val = "u16", var = "ElectricityProducerHours" },
+   [111] = { dir = "R-", txt = "Electricity production", val = "u16", var = "ElectricityProduction" },
+   [112] = { dir = "R-", txt = "Cumulativ Electricity production", val = "u16", var = "CumulativElectricityProduction" },
+   [113] = { dir = "RW", txt = "Unsuccessful burner starts", val = "u16", var = "BurnerUnsuccessfulStarts" },
+   [114] = { dir = "RW", txt = "Flame signal too low count", val = "u16", var = "FlameSignalTooLow" },
+   -- V1.17 end
    [115] = { dir = "R-", txt = "OEM diagnostic code", val = "u16", var = "OEMDiagnosticCode" },
    [116] = { dir = "RW", txt = "Number of starts burner", val = "u16", var = "StartsBurner" },
    [117] = { dir = "RW", txt = "Number of starts central heating pump", val = "u16", var = "StartsCHPump" },
@@ -408,7 +457,12 @@ local otgMessage_t = {
    [124] = { dir = "-W", txt = "Opentherm version Master", val = "f8.8", var = "MasterOpenThermVersion" },
    [125] = { dir = "R-", txt = "Opentherm version Slave", val = "f8.8", var = "SlaveOpenThermVersion" },
    [126] = { dir = "-W", txt = "Master product version and type", val = "u8", var = { hb = "MasterProductType", lb = "MasterProductVersion" } },
-   [127] = { dir = "R-", txt = "Slave product version and type", val = "u8", var = { hb = "SlaveProductType", lb = "SlaveProductVersion" } }
+   [127] = { dir = "R-", txt = "Slave product version and type", val = "u8", var = { hb = "SlaveProductType", lb = "SlaveProductVersion" } },
+   -- V1.17 start
+   [131] = { dir = "RW", txt = "Remeha dF-/dU-codes", val = "u8", var = "RemehadFdUcodes" },
+   [132] = { dir = "R-", txt = "Remeha Servicemessage", val = "u8", var = "RemehaServicemessage" },
+   [133] = { dir = "R-", txt = "Remeha detection connected SCU’s", val = "u8", var = "RemehaDetectionConnectedSCU" }
+   -- V1.17 end
 }
 
 local otgConfig_t = {
@@ -424,6 +478,34 @@ local otgConfig_t = {
 -- Changes for firmware version 4
 local otgVersionConfig_t = {
    [4] = { 
+           GW   = { rep = "M", ret = "PR: M=([M|G])", map_t = { M = "0", G = "1" } },
+           LED  = { ret = "PR: L=([R|X|T|B|O|F|H|W|C|E|M|P]+)", cnt = 6 },
+           ITR  = { txt = "Ignore mid-bit transitions", ret = "PR: T=([0|1])" },
+           ROF  = { txt = "Remote Override Function flags", tab = { [0] = {txt = "Low byte only"}, [1] = {txt = "Low and high byte"} }, 
+                    var = "ROFInBothBytes", cmd = "OH", rep = "T", ret = "PR: T=[0|1]([0|1])" },
+           REF  = { ret = "PR: V=(%d)" },
+           SETB = { txt = "Setback temperature", var = "SetbackTemperature", cmd = "SB", rep = "S", ret = "PR: S=(%d+.%d+)" },
+           HOT  = { ret = "PR: W=([0|1|A])" },
+           GPIO = { txt = "GPIO configuration <A>", tab = otg.GPIOFunction_t, var = "GPIOConfiguration", cmd = "G<A>", rep = "G", 
+                    ret = "PR: G=([%d]+)", cnt = 2 },
+           PWR  = { txt = "Current power level", var = "PowerLevel", rep = "P", ret = "PR: P=([L|M|H])" }
+         },
+   [5] = { 
+           VER = { ret = "PR: A=OpenTherm Gateway (.*)" },
+		   GW   = { rep = "M", ret = "PR: M=([M|G])", map_t = { M = "0", G = "1" } },
+           LED  = { ret = "PR: L=([R|X|T|B|O|F|H|W|C|E|M|P]+)", cnt = 6 },
+           ITR  = { txt = "Ignore mid-bit transitions", ret = "PR: T=([0|1])" },
+           ROF  = { txt = "Remote Override Function flags", tab = { [0] = {txt = "Low byte only"}, [1] = {txt = "Low and high byte"} }, 
+                    var = "ROFInBothBytes", cmd = "OH", rep = "T", ret = "PR: T=[0|1]([0|1])" },
+           REF  = { ret = "PR: V=(%d)" },
+           SETB = { txt = "Setback temperature", var = "SetbackTemperature", cmd = "SB", rep = "S", ret = "PR: S=(%d+.%d+)" },
+           HOT  = { ret = "PR: W=([0|1|A])" },
+           GPIO = { txt = "GPIO configuration <A>", tab = otg.GPIOFunction_t, var = "GPIOConfiguration", cmd = "G<A>", rep = "G", 
+                    ret = "PR: G=([%d]+)", cnt = 2 },
+           PWR  = { txt = "Current power level", var = "PowerLevel", rep = "P", ret = "PR: P=([L|M|H])" }
+         },
+   [6] = { 
+           VER = { ret = "PR: A=OpenTherm Gateway (.*)" },
            GW   = { rep = "M", ret = "PR: M=([M|G])", map_t = { M = "0", G = "1" } },
            LED  = { ret = "PR: L=([R|X|T|B|O|F|H|W|C|E|M|P]+)", cnt = 6 },
            ITR  = { txt = "Ignore mid-bit transitions", ret = "PR: T=([0|1])" },
@@ -759,7 +841,7 @@ function otgRegisterWithAltUI()
 	end
 end
 
--- Initialises the plugin, handlers etc.
+-- Initializes the plugin, handlers etc.
 function otgStartup(lul_device)
 	otg.Device = lul_device
 	local i, key, tab
@@ -1022,7 +1104,11 @@ function otgIncoming(data)
       end
       return true
    else
+	  debug("Incoming data not a message. Length: " .. string.len(data or "").. ". return on zero length data.")
       otgLogInfo(data)
+	  if (string.len(data or "") == 0) then
+		return true
+	  end
    end
    if (otg.ExpectingResponse == true) then
       otg.ExpectingResponse = false
@@ -1085,10 +1171,31 @@ end
 function otgClockTimer(dummy)
    local now = os.time()
    if (otg.LastResponse > 0 and (now - otg.LastResponse > 60)) then
+luup.log ("OTGW: Lost connection, no data for 2 mins.")
       -- We have not received anything in the last minute
       local first = updateIfNeeded(otg.HA_DEV_SID, "CommFailure", 1, otg.Device)
       if (first == true) then 
+luup.log ("OTGW: Lost connection, is new state.")
          otgMessage("Communication failure: last communication at " .. os.date("%F / %X", otg.LastResponse), 1)
+	     -- Check if connected via IP, then try to reconnect. Does not recover.
+--	     local ip = luup.attr_get("ip",otg.Device)
+--	     if (ip ~= "") then
+--luup.log ("OTGW: Lost connection, is over IP.")
+--           if (luup.io.is_connected(otg.Device) == false) then
+--luup.log ("OTGW: Lost connection, IP connection lost.")
+--		       local ipaddr, port = string.match(ip, "(.-):(.*)")
+--		       debug("Reconnect IP = " .. ipaddr .. ", port = " .. port)
+--		       luup.io.open(otg.Device, ipaddr, tonumber(port))
+--	        end
+--		    -- Check connection is up again
+--	        if (luup.io.is_connected(otg.Device) == false) then
+--		       otgMessage("Unable to reconnect", 2)
+--luup.log ("OTGW: Lost connection, IP connection cannot be restored.")
+--            else	  
+--luup.log ("OTGW: Lost connection, IP connection reestablished.")
+ --              updateIfNeeded(otg.HA_DEV_SID, "CommFailure", 0, otg.Device)
+--            end
+--          end
       end
    end
    local sync = varGet(otgPluginInit_t.CLK.var)
@@ -1351,7 +1458,7 @@ function otgSetClock(timer)
       if (dow == 0) then 
          dow = 7 
       end
-      otgWriteCommand("SC=" .. now.hour .. ":" .. now.min .. "/" .. dow)
+      otgWriteCommand(string.format("SC=%d:%02d/%d", now.hour, now.min, dow)) -- V1.17
       if (otg.MajorVersion >= 4) then -- SR command only available from FW4
          local sync = tonumber((varGet(otgPluginInit_t.CLK.var))) or 0
          if (timer == false or sync == otg.ClockSync_t.DATE or sync == otg.ClockSync_t.YEAR) then

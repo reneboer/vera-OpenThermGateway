@@ -1,7 +1,7 @@
 //# sourceURL=J_OpenThermGateway_UI7.js
 // OpenTherm Gateway UI for UI7
 // Written by nlrb, modified for UI7 and ALTUI by Rene Boer. 
-// V1.14 17 November 2018
+// V1.17 10 January 2023
 var OpenThermGateway = (function (api) {
 	var _DIV_PREFIX = "otgJS_";		// Used in HTML div IDs to make them unique for this module
 	var _MOD_PREFIX = "OpenThermGateway";  // Must match module name above
@@ -164,7 +164,7 @@ var OpenThermGateway = (function (api) {
 				var msg = otgjsMessage[msgNr];
 				var msgVar = msg['var'];
 				if (typeof(msgVar) == 'object') {
-					msgVar = row[1];
+					msgVar = msgVar[row[1]];
 				}
 				var val = varGet(deviceID, msgVar);
 				if ((val == null || val == "") && elem.style.color == "") {
@@ -387,13 +387,15 @@ var OpenThermGateway = (function (api) {
 		var showConfig = ['GW', 'REF', 'ITR', 'ROF', 'GPIO', 'LED'];
 		$.each(showConfig, function(key, elem) {
 			if (otgjsConfig[elem] !== undefined) {
+				var selection = ""; 
 				if (otgjsConfig[elem].cnt === undefined) {
-					varSet(deviceID,otgjsConfig[elem].var,htmlGetPulldownSelection(deviceID, otgjsConfig[elem].var));
+					selection=htmlGetPulldownSelection(deviceID, otgjsConfig[elem].var);
 				} else {
 					for (var j=0; j<otgjsConfig[elem].cnt; j++){
-						varSet(deviceID,otgjsConfig[elem].var+j,htmlGetPulldownSelection(deviceID, otgjsConfig[elem].var+j));
+						selection += htmlGetPulldownSelection(deviceID, otgjsConfig[elem].var+j);
 					}
 				}
+				varSet(deviceID,otgjsConfig[elem].var,selection);
 			}
 		});
 		application.sendCommandSaveUserData(true);
@@ -598,7 +600,16 @@ var OpenThermGateway = (function (api) {
 	// Add a label and pulldown selection
 	function htmlAddPulldown(di, lb, vr, values) {
 		try {
-			var selVal = varGet(di, vr);
+			// Check for numbered variable name (GPIO & LED). Then used indexed value from base variable.
+			var idx = vr.match(/\d+/g);
+			var selVal;
+			if (idx != null) {
+				var name = vr.substring(0, vr.length-1)
+				selVal = varGet(di, name);
+				selVal = (selVal == null ? '' : selVal.substr(Number(idx), 1));
+			} else {
+				var selVal = varGet(di, vr);
+			}
 			var html = '<div id="'+buildIDTag(vr,di)+'_div" class="clearfix labelInputContainer">\
 				<div class="pull-left inputLabel" style="width:280px;">'+lb+'</div>\
 				<div class="pull-left customSelectBoxContainer">\
